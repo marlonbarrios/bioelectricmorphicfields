@@ -2,6 +2,8 @@
 
 An interactive audiovisual exploration of bioelectricity and cellular memory, based on Michael Levin's research on embodied intelligence and morphogenetic fields.
 
+[🌐 Experience the Live App](https://marlonbarrios.github.io/bioelectricmorphicfields/)
+
 ## Overview
 
 This project creates a generative art experience that visualizes and sonifies the complex interactions of bioelectric networks and cellular communication. It combines:
@@ -10,6 +12,13 @@ This project creates a generative art experience that visualizes and sonifies th
 - Generative text based on cellular memory and morphogenesis
 - Dynamic sound synthesis synchronized with particle behavior
 - Interactive elements responding to user engagement
+
+## Morphogenetic Field Visualizations
+
+![Morphogenetic Field 1](images/morph1.png)
+![Morphogenetic Field 2](images/morph2.png)
+
+These visualizations demonstrate the emergent patterns and bioelectric networks that form through particle interactions and collective behavior.
 
 ## Features
 
