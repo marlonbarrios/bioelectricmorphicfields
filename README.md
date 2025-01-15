@@ -1,95 +1,45 @@
-# Bioelectric Morphic Rap - Interactive Audio-Visual Experience
+# Bioelectric MetaMorphic Techno Fugue
 
-A generative, open-ended multimedia piece that creates an endless stream of:
-- AI-generated text from Michael Levin's research (using Meta's Llama 3)
-- AI-generated cellular imagery inhabiting 3D particles (using Stable Diffusion)
-- Text-to-speech narration of the generated insights
-- Generative techno soundscape with synchronized particle choreography
+An interactive audiovisual exploration of bioelectricity and cellular memory, based on Michael Levin's research on embodied intelligence and morphogenetic fields.
 
 ## Overview
 
-This project is an autonomous generative system that continuously produces:
-- Continuous generation of scientific insights about bioelectricity every 5 seconds
-- Real-time synthesis of cellular imagery that inhabits each new particle
-- Automatic narration of the generated content
-- Dynamic 3D particle choreography synchronized to a techno beat
-- A growing swarm of particles, each carrying its unique text, image, and voice
+This project creates a generative art experience that visualizes and sonifies the complex interactions of bioelectric networks and cellular communication. It combines:
+
+- Real-time particle systems with bioelectric connections
+- Generative text based on cellular memory and morphogenesis
+- Dynamic sound synthesis synchronized with particle behavior
+- Interactive elements responding to user engagement
 
 ## Features
 
-### Visual Elements
-- 3D particle swarm inhabited by AI-generated cellular imagery
-- Three distinct dance patterns synchronized to music:
-  - Pulse: Expansion and contraction
-  - Spiral: Rotating spiral formations
-  - Wave: Fluid wave-like movements
-- Interactive hover effects
-- Pop animations for new particles
-- Beat-synchronized scaling and movement
+- **Visual Elements**
+  - Dynamic particle system with organic movement
+  - Bioelectric connections with flowing energy
+  - Color-shifting neural networks
+  - Interactive hover and collision effects
 
-### Audio System
-- Generative techno background music
-- Dynamic beat tracking
-- Text-to-speech narration
-- Interactive sound effects:
-  - Hover sounds
-  - Pop sounds for new particles
-- Adaptive volume mixing
+- **Audio Elements**
+  - Generative soundscape based on particle interactions
+  - Techno-inspired rhythmic elements
+  - Dynamic frequency modulation
+  - Spatial audio effects
 
-### Content Generation
-- Autonomous, endless generation of:
-  - Scientific narratives about bioelectricity
-  - Cellular imagery synthesis
-  - Voice narration
-  - Techno soundscape
-- Each particle becomes a carrier of:
-  - Generated text
-  - Generated image
-  - Synthesized voice
-- New content emerges every 5 seconds
+- **Text Generation**
+  - AI-generated insights about bioelectricity
+  - Real-time text streaming
+  - Voice synthesis with synchronized display
 
-## How to Use
+## Interaction
 
-1. Press SPACEBAR to start/stop the continuous generation
-2. Hover over particles to:
-   - Hear their associated text
-   - Trigger interactive sounds
-   - See visual feedback
-3. Watch as new particles appear and join the swarm
-4. Listen to the synchronized audio-visual experience
+- **SPACEBAR**: Start/stop generation
+- **S**: Record session
+- **Mouse**: Hover over particles to interact
 
 ## Technical Details
 
-Built using:
+Built with:
 - p5.js for visual rendering
 - Web Audio API for sound synthesis
-- Speech Synthesis API for narration
-- AI text generation
-- 3D particle physics
-- Beat synchronization system
-
-## Controls
-
-- SPACEBAR: Toggle continuous generation
-- Mouse hover: Interact with particles
-- Generation occurs every 5 seconds when active
-
-## Installation
-
-1. Clone the repository
-2. Serve the files using a local web server
-3. Open in a modern web browser
-4. Allow audio playback when prompted
-
-## Requirements
-
-- Modern web browser with WebGL support
-- Audio output capability
-- Decent GPU for smooth particle rendering
-
-## Credits
-
-Concept and Programming by Marlon Barrios Solano
-- Bioelectric research concepts from Michael Levin's work
-- Audio synthesis inspired by electronic music techniques
-- Particle system physics based on flocking behaviors 
+- Speech Synthesis API for voice generation
+- AI text generation via LLaMA 

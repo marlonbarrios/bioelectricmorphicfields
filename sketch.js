@@ -630,12 +630,20 @@ function setup() {
       backdrop-filter: blur(10px);">
       
       <h1 style="margin: 0 0 15px 0; font-size: 1.8em; color: #4CAF50; font-weight: 300;">
-        Bioelectric Morphic Rap
+        Bioelectric MetaMorphic Techno Fugue
       </h1>
       
       <p style="margin: 0 0 15px 0; font-size: 1em; color: #FFF; line-height: 1.5;">
         A generative exploration of bioelectricity and cellular memory, 
         based on Michael Levin's research.
+      </p>
+      
+      <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #AAA; line-height: 1.5;">
+        Powered by multiple AI systems working in concert:
+        LLaMA for generating scientific insights, Stable Diffusion for 
+        creating cellular imagery, and neural text-to-speech for 
+        real-time narration. Each element emerges through the 
+        interaction of these generative systems.
       </p>
       
       <div style="
