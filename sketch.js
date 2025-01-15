@@ -179,6 +179,14 @@ let destinationNode;
 let recordingStartTime;
 let recordingDuration = 0;
 
+// Add to global variables
+let streamingText = '';
+let targetText = '';
+let streamingIndex = 0;
+let lastStreamTime = 0;
+const STREAM_SPEED = 30; // Characters per second
+const STREAM_INTERVAL = 1000 / STREAM_SPEED; // Milliseconds between each character
+
 class Particle {
   constructor(img, text) {
     this.pos = createVector(
@@ -801,6 +809,14 @@ async function handleGeneration() {
     
     // Generate text and start speaking immediately
     const textResponse = await getChatResponse(currentPrompt);
+    
+    // Reset streaming state
+    streamingText = '';
+    streamingIndex = 0;
+    targetText = textResponse;
+    lastStreamTime = millis();
+    
+    // Add new text to history
     textHistory.unshift({
       text: textResponse,
       timestamp: new Date().toLocaleTimeString()
@@ -817,19 +833,19 @@ async function handleGeneration() {
       speechQueue.push(textResponse);
     }
 
+    // Force immediate update of display
     updateHistoryDisplay();
     
-    // Generate image in parallel
-    generateImage(currentPrompt).then(imageResponse => {
+    // Generate image and create new particle
+    const imageResponse = await generateImage(currentPrompt);
+    if (imageResponse) {
       loadImage(imageResponse, img => {
         if (particles.length >= MAX_PARTICLES) {
-          particles.pop();
+          particles.shift();
         }
-        particles.unshift(new Particle(img, textResponse));
+        particles.push(new Particle(img, textResponse));
       });
-    }).catch(error => {
-      console.error("Image generation failed:", error);
-    });
+    }
     
   } catch (error) {
     console.error("Generation error:", error);
@@ -934,20 +950,37 @@ function speakText(text) {
     utterance.voice = preferredVoice;
   }
   
-  // Lower background sound when speaking
+  // Reset streaming state when speech starts
   utterance.onstart = () => {
     isSpeaking = true;
     currentlySpokenText = text;
+    streamingText = '';
+    streamingIndex = 0;
+    targetText = text;
+    lastStreamTime = millis();
+    
     // Reduce background volume
     gainNodes.forEach(gain => {
       gain.gain.setTargetAtTime(0.03, audioContext.currentTime, 0.5);
     });
-    updateHistoryDisplay();
+  };
+  
+  // Add boundary event to sync streaming with speech
+  utterance.onboundary = (event) => {
+    if (event.name === 'word') {
+      const wordIndex = event.charIndex;
+      streamingIndex = Math.min(wordIndex + event.charLength, text.length);
+      streamingText = text.substring(0, streamingIndex);
+      updateHistoryDisplay();
+    }
   };
   
   utterance.onend = () => {
     isSpeaking = false;
     currentlySpokenText = null;
+    streamingText = text; // Ensure full text is shown
+    streamingIndex = text.length;
+    
     // Restore background volume
     gainNodes.forEach(gain => {
       gain.gain.setTargetAtTime(0.1, audioContext.currentTime, 1);
@@ -966,35 +999,36 @@ function speakText(text) {
 function updateHistoryDisplay() {
   let historyHTML = textHistory.map((item, index) => `
     <div style="
-      background: rgba(0, 0, 0, 0.5);
+      background: transparent;
       padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       width: 100%;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
       position: relative;
       transform: translateY(${index * 10}px);
       transition: all 0.3s ease;
-      ${item.text === currentlySpokenText ? `
-        border: 2px solid #4CAF50;
-        transform: scale(1.02);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        background: rgba(0, 0, 0, 0.6);
-      ` : ''}">
+      border-left: 2px solid ${item.text === currentlySpokenText ? '#4CAF50' : 'rgba(255, 255, 255, 0.2)'};
+      padding-left: 15px;">
       <div style="
-        color: rgba(255, 255, 255, 0.7); 
+        color: rgba(255, 255, 255, 0.5); 
         font-size: 0.8em; 
-        margin-bottom: 10px;
-        font-family: 'Helvetica', sans-serif;">
-        ${item.timestamp}
+        font-family: 'Courier New', monospace;
+        margin-bottom: 8px;">
+        [${item.timestamp}] > BIOELECTRIC_SIGNAL_${String(index).padStart(3, '0')}
       </div>
       <div style="
-        color: rgba(255, 255, 255, 1); 
+        color: rgba(255, 255, 255, 0.85); 
         font-size: 1em; 
         line-height: 1.6;
-        font-family: 'Helvetica', sans-serif;">
-        ${item.text}
+        font-family: 'Courier New', monospace;
+        letter-spacing: 0.5px;
+        position: relative;
+        overflow: hidden;">
+        ${index === 0 && item.text === currentlySpokenText ? 
+          `<span style="color: rgba(255, 255, 255, 0.85);">${streamingText}</span>` +
+          (streamingIndex < item.text.length ? 
+            '<span style="color: #4CAF50; animation: blink 1s infinite;">_</span>' : 
+            '<span style="color: #4CAF50;">█</span>') : 
+          item.text}
       </div>
     </div>
   `).join('');
