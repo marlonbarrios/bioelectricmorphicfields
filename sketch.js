@@ -54,6 +54,15 @@ let isSpeaking = false;
 let speechQueue = [];
 let currentlySpokenText = null;
 
+// Update constants for more dynamic swarm behavior
+const SEPARATION_FORCE = 1.5;    // Stronger separation
+const COHESION_FORCE = 0.6;      // Moderate cohesion
+const ALIGNMENT_FORCE = 0.4;     // Light alignment
+const WANDER_STRENGTH = 0.003;   // Random movement
+const MAX_SPEED = 1.2;           // Faster movement
+const MAX_FORCE = 0.05;          // Stronger steering
+const EDGE_BUFFER = 150;         // Softer boundaries
+
 class Particle {
   constructor(img, text) {
     this.pos = createVector(
@@ -73,11 +82,18 @@ class Particle {
     this.lastHoverState = false;
     this.currentUtterance = null;
     
-    this.maxSpeed = 0.8;
-    this.maxForce = 0.02;
-    this.separationDist = 500;
-    this.cohesionDist = 800;
-    this.alignmentDist = 600;
+    // Update movement parameters
+    this.maxSpeed = MAX_SPEED;
+    this.maxForce = MAX_FORCE;
+    this.separationDist = 300;    // Closer separation distance
+    this.cohesionDist = 500;      // Larger cohesion range
+    this.alignmentDist = 400;     // Moderate alignment range
+    
+    // Add parameters for organic movement
+    this.wanderTheta = random(TWO_PI);
+    this.wanderRadius = 50;
+    this.wanderDistance = 100;
+    this.phaseOffset = random(TWO_PI);
   }
 
   separate() {
@@ -148,28 +164,48 @@ class Particle {
   }
 
   update() {
-    // Add center attraction force
-    let toCenter = createVector(0, 0, 0).sub(this.pos);
-    toCenter.mult(CENTER_PULL);
-    this.acc.add(toCenter);
-    
-    let separation = this.separate();
-    let cohesion = this.cohesion();
-    let alignment = this.align();
-    
-    separation.mult(1.2);
-    cohesion.mult(0.5);
-    alignment.mult(0.3);
-    
-    this.acc.add(separation);
-    this.acc.add(cohesion);
-    this.acc.add(alignment);
-    this.acc.add(p5.Vector.random3D().mult(0.002)); // Reduced random movement
-    
-    this.vel.add(this.acc);
-    this.vel.limit(this.maxSpeed * 0.8); // Reduced max speed
-    this.pos.add(this.vel);
-    this.acc.mult(0);
+    if (!this.isHovered) {
+      // Calculate swarm forces
+      let separation = this.separate().mult(SEPARATION_FORCE);
+      let cohesion = this.cohesion().mult(COHESION_FORCE);
+      let alignment = this.align().mult(ALIGNMENT_FORCE);
+      
+      // Add wandering behavior
+      let wander = this.getWanderForce().mult(WANDER_STRENGTH);
+      
+      // Add forces
+      this.acc.add(separation);
+      this.acc.add(cohesion);
+      this.acc.add(alignment);
+      this.acc.add(wander);
+      
+      // Add sinusoidal vertical motion
+      let time = frameCount * 0.02;
+      this.acc.add(0, sin(time + this.phaseOffset) * 0.001, cos(time + this.phaseOffset) * 0.001);
+      
+      // Update velocity with improved damping
+      this.vel.add(this.acc);
+      this.vel.limit(this.maxSpeed * (0.8 + sin(time) * 0.2)); // Variable speed
+      
+      // Add slight spiral motion
+      let toCenter = createVector(-this.pos.x, -this.pos.y, -this.pos.z);
+      toCenter.normalize();
+      let spiral = createVector(
+        -this.pos.y * 0.001,
+        this.pos.x * 0.001,
+        sin(time + this.phaseOffset) * 0.001
+      );
+      this.vel.add(spiral);
+      
+      // Update position
+      this.pos.add(this.vel);
+      
+      // Soft boundary handling
+      this.handleBounds();
+      
+      // Reset acceleration
+      this.acc.mult(0);
+    }
     
     // Constrain to smaller space
     this.pos.x = constrain(this.pos.x, -width/3, width/3);
@@ -218,6 +254,59 @@ class Particle {
       plane(this.size, this.size);
     }
     pop();
+  }
+
+  getWanderForce() {
+    // Calculate wander point
+    this.wanderTheta += random(-0.3, 0.3);
+    let wanderPoint = this.vel.copy();
+    wanderPoint.normalize();
+    wanderPoint.mult(this.wanderDistance);
+    wanderPoint.add(this.pos);
+    
+    let theta = this.wanderTheta + this.vel.heading();
+    let x = this.wanderRadius * cos(theta);
+    let y = this.wanderRadius * sin(theta);
+    wanderPoint.add(x, y, 0);
+    
+    let steer = p5.Vector.sub(wanderPoint, this.pos);
+    steer.normalize();
+    steer.mult(this.maxSpeed);
+    steer.sub(this.vel);
+    steer.limit(this.maxForce);
+    return steer;
+  }
+
+  handleBounds() {
+    let buffer = EDGE_BUFFER;
+    let bounds = createVector(width/2, height/2, 300);
+    let desired = null;
+    
+    if (this.pos.x < -bounds.x + buffer) {
+      desired = createVector(this.maxSpeed, this.vel.y, this.vel.z);
+    } else if (this.pos.x > bounds.x - buffer) {
+      desired = createVector(-this.maxSpeed, this.vel.y, this.vel.z);
+    }
+    
+    if (this.pos.y < -bounds.y + buffer) {
+      desired = createVector(this.vel.x, this.maxSpeed, this.vel.z);
+    } else if (this.pos.y > bounds.y - buffer) {
+      desired = createVector(this.vel.x, -this.maxSpeed, this.vel.z);
+    }
+    
+    if (this.pos.z < -bounds.z + buffer) {
+      desired = createVector(this.vel.x, this.vel.y, this.maxSpeed);
+    } else if (this.pos.z > bounds.z - buffer) {
+      desired = createVector(this.vel.x, this.vel.y, -this.maxSpeed);
+    }
+    
+    if (desired !== null) {
+      desired.normalize();
+      desired.mult(this.maxSpeed);
+      let steer = p5.Vector.sub(desired, this.vel);
+      steer.limit(this.maxForce);
+      this.acc.add(steer);
+    }
   }
 }
 
