@@ -21,26 +21,87 @@ const system_prompt = `Generate complete, self-contained statements about bioele
 8. The role of bioelectric networks in storing and processing pattern information
 9. Scale-invariant principles of biological intelligence
 10. Novel synthetic living systems and their emergent behaviors
+11. How biological memory manifests as physical form
+12. The relationship between memory, pattern, and structure
+13. The musical nature of bioelectric signaling frequencies
+14. Visual patterns and geometric forms in morphogenesis
+15. The choreography of cellular movement and organization
+16. Harmonic relationships in biological pattern formation
+17. The aesthetic principles of biological self-organization
+18. Memory as a sculptural force in living systems
+19. The relationship between form, function, and artistic expression in nature
+20. How collective behavior creates complex spatial and temporal compositions
 
-Each statement must be a complete thought that ends with a period. Include concepts about collective intelligence, bioelectric signaling, morphogenetic fields, and developmental decision-making. Frame biological processes in terms of information processing and problem-solving strategies.`;
+Each statement must be a complete thought that ends with a period. Include concepts about collective intelligence, bioelectric signaling, morphogenetic fields, and developmental decision-making. Frame biological processes in terms of information processing, problem-solving strategies, and their inherent artistic and musical qualities.
+
+Consider these additional artistic dimensions:
+
+1. How biological systems create emergent compositions
+2. The relationship between cellular patterns and artistic forms
+3. Natural principles of aesthetic organization
+4. The musical nature of bioelectric communication
+5. Choreographic patterns in cellular behavior
+6. The emergence of visual harmony in living systems
+7. Biological principles of composition and form
+8. Memory as an architect of biological form
+9. Natural algorithms for pattern creation
+10. The aesthetics of collective cellular behavior
+11. How memories become embodied in physical structures
+12. The sculptural nature of biological memory
+13. Pattern formation as memory materialization
+14. The relationship between time, memory, and form
+15. How collective memory shapes biological architecture
+
++ Consider these digital art and gestalt principles:
++ 
++ 1. How biological patterns mirror generative art algorithms
++ 2. The relationship between cellular organization and gestalt principles
++ 3. Emergence of form through collective digital behaviors
++ 4. Self-organizing principles in both biology and digital art
++ 5. Pattern recognition and formation in living and digital systems
++ 6. The role of proximity, similarity, and continuity in biological organization
++ 7. How digital generative systems reflect biological growth patterns
++ 8. The relationship between code, memory, and biological form
++ 9. Computational aesthetics in natural and artificial systems
++ 10. The convergence of digital and biological pattern languages
++ 11. How gestalt principles guide both perception and growth
++ 12. The role of iteration and recursion in natural forms
++ 13. Digital morphogenesis and biological development
++ 14. The aesthetics of emergent computational behavior
++ 15. How code can simulate and extend biological principles
+
+Frame responses to emphasize the artistic and compositional aspects of biological processes, 
+exploring how nature creates beauty through pattern, rhythm, form, and the embodiment of memory,
+and how these principles manifest in both biological and digital generative systems.`;
 
 // Array of different prompts to cycle through
 const prompts = [
-    "Bioelectric signaling networks",
-    "Voltage-guided regeneration",
-    "Ion channel patterns",
-    "Cellular electrical fields", 
-    "Bioelectric memory",
-    "Tissue voltage gradients",
-    "Regenerative bioelectricity",
-    "Gap junction networks",
-    "Membrane voltage states",
-    "Bioelectric circuits",
-    "Developmental bioelectricity",
-    "Wound healing fields",
-    "Voltage-guided growth",
-    "Bioelectric computation",
-    "Pattern formation signals"
+    "Cellular choreography and dance patterns",
+    "Bioelectric rhythms and musical structures",
+    "Morphogenetic harmonies and resonance",
+    "Memory as biological sculpture",
+    "Form as crystallized memory",
+    "Biological composition principles",
+    "Cellular collective art-making",
+    "Emergent aesthetic patterns",
+    "Bioelectric symphonies",
+    "Living architecture patterns",
+    "Organic geometric forms",
+    "Memory-shaped morphogenesis",
+    "Natural compositional intelligence",
+    "Biological improvisation patterns",
+    "Cellular ensemble behaviors",
+    "Morphic resonance in art",
+    "Embodied memory patterns",
+    "Bioelectric orchestration",
+    "Living pattern languages",
+    "Memory architectures in nature",
+    "Cellular aesthetic emergence",
+    "Biological composition rules",
+    "Form as memory made visible",
+    "Natural form generation",
+    "Organic visual rhythms",
+    "Memory-form relationships"
 ];
 
 // Global variables
@@ -57,17 +118,17 @@ let audioContext;
 let oscillators = [];
 let gainNodes = [];
 let filterNodes = [];
-const NUM_OSCILLATORS = 6;  // More oscillators for richer sound
-const BPM = 128;  // Standard techno tempo
+const NUM_OSCILLATORS = 4;  // Reduced from 6 for less complex sound
+const BPM = 100;  // Slower tempo for calmer feel
 const BEAT_INTERVAL = (60 / BPM) * 1000;  // Convert BPM to milliseconds
 
-// Update constants for more dynamic swarm behavior
-const SEPARATION_FORCE = 1.5;    // Stronger separation
-const COHESION_FORCE = 0.6;      // Moderate cohesion
-const ALIGNMENT_FORCE = 0.4;     // Light alignment
-const WANDER_STRENGTH = 0.003;   // Random movement
-const MAX_SPEED = 1.2;           // Faster movement
-const MAX_FORCE = 0.05;          // Stronger steering
+// Update constants for more stable sound
+const SEPARATION_FORCE = 1.2;    // Reduced separation
+const COHESION_FORCE = 0.8;      // Increased cohesion for stability
+const ALIGNMENT_FORCE = 0.6;     // Increased alignment for smoother movement
+const WANDER_STRENGTH = 0.002;   // Reduced random movement
+const MAX_SPEED = 1.0;           // Slower movement
+const MAX_FORCE = 0.04;          // Reduced force
 const EDGE_BUFFER = 150;         // Softer boundaries
 
 // Add new audio variables
@@ -89,11 +150,34 @@ const DANCE_MODES = {
 
 let isAutoGenerating = false;
 let generationInterval;
-const AUTO_GENERATION_INTERVAL = 5000; // 5 seconds
+const AUTO_GENERATION_INTERVAL = 10000; // 10 seconds
 
 // Add to global variables
 let popSynth;
 let hoverSynth;
+
+// Add to global variables
+let rhythmComplexity = 1;
+const MAX_COMPLEXITY = 4;
+
+// Add to global variables
+const BASE_FREQUENCIES = [146.83, 220, 293.66, 440];  // Initial frequencies
+let currentScale = 0;  // Track current musical scale
+const SCALES = [
+  [146.83, 220, 293.66, 440],     // D minor
+  [174.61, 261.63, 349.23, 523.25], // F major
+  [196, 293.66, 392, 587.33],     // G major
+  [220, 329.63, 440, 659.25]      // A major
+];
+
+// Add to global variables
+let mediaRecorder;
+let recordedChunks = [];
+let isRecording = false;
+let recordingStream;
+let destinationNode;
+let recordingStartTime;
+let recordingDuration = 0;
 
 class Particle {
   constructor(img, text) {
@@ -148,6 +232,9 @@ class Particle {
         random(-300, 300)
       ));
     }
+    
+    this.radius = this.originalSize / 2;  // Add radius for collision detection
+    this.lastCollisionTime = 0;  // Track last collision to prevent too frequent sounds
   }
 
   separate() {
@@ -280,6 +367,11 @@ class Particle {
       
       // Reset acceleration
       this.acc.mult(0);
+      
+      // Add collision check
+      if (particles.length > 1) {
+        this.checkCollisions(particles);
+      }
     }
     
     // Constrain to smaller space
@@ -416,107 +508,159 @@ class Particle {
   applyDanceMovement(beatProgress) {
     const time = frameCount * 0.02 * this.danceSpeed;
     const beatIntensity = (1 + sin(beatProgress * TWO_PI)) * 0.5;
+    // Scale movement intensity with rhythm complexity
+    const complexityFactor = rhythmComplexity / MAX_COMPLEXITY;
     
     switch(this.danceMode) {
       case DANCE_MODES.PULSE:
-        // Stronger pulsing movement
+        // Stronger pulsing movement that scales with complexity
         let toCenter = createVector(0, 0, 0).sub(this.pos);
         toCenter.normalize();
-        toCenter.mult(sin(time + this.dancePhase) * beatIntensity * 4);
+        toCenter.mult(sin(time + this.dancePhase) * beatIntensity * 4 * complexityFactor);
         this.acc.add(toCenter);
-        this.beatScale = 1 + sin(beatProgress * TWO_PI) * 0.4 * this.danceAmplitude;
+        this.beatScale = 1 + sin(beatProgress * TWO_PI) * 0.4 * this.danceAmplitude * complexityFactor;
         break;
         
       case DANCE_MODES.SPIRAL:
-        // More pronounced spiral
+        // More pronounced spiral that intensifies with complexity
         let spiralForce = createVector(
-          -this.pos.y * 0.02,
-          this.pos.x * 0.02,
-          sin(time + this.dancePhase) * 1.0
+          -this.pos.y * 0.02 * complexityFactor,
+          this.pos.x * 0.02 * complexityFactor,
+          sin(time + this.dancePhase) * complexityFactor
         );
         spiralForce.mult(beatIntensity * this.danceAmplitude * 1.5);
         this.acc.add(spiralForce);
         break;
         
       case DANCE_MODES.WAVE:
-        // Larger wave movement
+        // Larger wave movement that grows with complexity
         let waveForce = createVector(
-          sin(time + this.dancePhase) * 4,
-          cos(time * 0.5 + this.dancePhase) * 4,
-          sin(time * 0.7) * 2
+          sin(time + this.dancePhase) * 4 * complexityFactor,
+          cos(time * 0.5 + this.dancePhase) * 4 * complexityFactor,
+          sin(time * 0.7) * 2 * complexityFactor
         );
         waveForce.mult(beatIntensity * this.danceAmplitude * 0.3);
         this.acc.add(waveForce);
         break;
+    }
+    
+    // Add extra movement based on rhythm complexity
+    if (complexityFactor > 0.5) {
+      let chaosForce = p5.Vector.random3D();
+      chaosForce.mult(0.1 * (complexityFactor - 0.5) * beatIntensity);
+      this.acc.add(chaosForce);
+    }
+  }
+
+  checkCollisions(others) {
+    const now = audioContext?.currentTime || 0;
+    const minTimeBetweenCollisions = 0.1; // Minimum time between collision sounds
+
+    for (let other of others) {
+      if (other === this) continue;
+      
+      let d = p5.Vector.dist(this.pos, other.pos);
+      let minDist = this.radius + other.radius;
+      
+      if (d < minDist && now - this.lastCollisionTime > minTimeBetweenCollisions) {
+        // Calculate collision velocity for sound intensity
+        let relativeVel = p5.Vector.sub(this.vel, other.vel).mag();
+        
+        // Play collision sound with intensity based on relative velocity
+        playCollisionSound(relativeVel);
+        
+        // Update last collision time
+        this.lastCollisionTime = now;
+        
+        // Calculate collision response
+        let normal = p5.Vector.sub(this.pos, other.pos).normalize();
+        let relativeVelocity = p5.Vector.sub(this.vel, other.vel);
+        let velocityAlongNormal = p5.Vector.dot(relativeVelocity, normal);
+        
+        // Only bounce if objects are moving towards each other
+        if (velocityAlongNormal > 0) return;
+        
+        // Bounce with some energy loss
+        let restitution = 0.8; // Bounciness factor (0.8 = 80% energy preserved)
+        let j = -(1 + restitution) * velocityAlongNormal;
+        
+        // Apply equal and opposite forces
+        let impulse = p5.Vector.mult(normal, j);
+        this.vel.add(p5.Vector.mult(impulse, 0.5));
+        other.vel.sub(p5.Vector.mult(impulse, 0.5));
+        
+        // Ensure minimum separation to prevent sticking
+        let overlap = minDist - d;
+        let separation = p5.Vector.mult(normal, overlap * 0.5);
+        this.pos.add(separation);
+        other.pos.sub(separation);
+      }
     }
   }
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
-  textFont('Courier New');
+  textFont('Helvetica');
   setAttributes('antialias', true);
   
-  // Create header container
+  // Create single header container
   let headerContainer = createDiv();
   headerContainer.style('position', 'fixed');
   headerContainer.style('left', '30px');
   headerContainer.style('top', '20px');
-  headerContainer.style('z-index', '1000');
-  headerContainer.style('color', 'white');
-  headerContainer.style('font-family', 'Courier New');
+  headerContainer.style('z-index', '1001');
+  headerContainer.style('width', '400px');
   
-  // Add title and description
+  // Simplified header content
   headerContainer.html(`
-    <h1 style="margin: 0; font-size: 1.5em; color: #4CAF50;">Bioelectric Patterns Explorer</h1>
-    <p style="margin: 5px 0; font-size: 0.9em; color: #888;">
-      An interactive visualization inspired by <a href="https://www.drmichaellevin.org/" target="_blank" style="color: #4CAF50; text-decoration: none; border-bottom: 1px dotted #4CAF50;">Michael Levin's</a> research on bioelectricity and cellular communication.
-      <br>
-      Exploring how electrical signals guide growth, healing, and pattern formation in living systems.
-    </p>
-    <p style="margin: 5px 0; font-size: 0.8em; color: #666;">
-      From the Levin Lab at Tufts University: Understanding diverse intelligence in evolved, designed, and hybrid complex systems.
-    </p>
-    <p style="margin: 5px 0; font-size: 0.8em; color: #666; border-top: 1px solid #333; padding-top: 5px;">
-      Powered by <span style="color: #4CAF50;">Meta's Llama 3</span> for text generation and 
-      <span style="color: #4CAF50;">Stable Diffusion</span> for visuals via Replicate.
-    </p>
-  `);
-  
-  let container = createDiv();
-  container.style('position', 'fixed');
-  container.style('left', '30px');
-  container.style('top', '120px'); // Adjusted to make room for header
-  container.style('z-index', '1000');
-  
-  outputContainer = createDiv();
-  outputContainer.parent(container);
-  outputContainer.style('color', 'white');
-  outputContainer.style('max-height', '70vh'); // Adjusted height
-  outputContainer.style('overflow-y', 'auto');
-  outputContainer.style('padding-right', '20px');
-  outputContainer.style('scrollbar-width', 'thin');
-  outputContainer.style('scrollbar-color', 'rgba(255, 255, 255, 0.5) transparent');
-  
-  // Updated instructions with more detail
-  outputContainer.html(`
-    <div style="background: rgba(255, 255, 255, 0.1); 
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 15px;">
-      <p style="margin: 0;">
-        Press <span style="color: #4CAF50; font-weight: bold;">SPACEBAR</span> to toggle continuous generation.
-        <br><br>
-        <span style="font-size: 0.9em; color: #888;">
-          New content will be generated every 5 seconds when active.
-          <br>
-          Press SPACEBAR again to stop generation and show project information.
-          <br>
-          Each particle represents a unique insight into bioelectric patterns and cellular intelligence.
-        </span>
+    <div style="
+      background: rgba(0, 0, 0, 0.85);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);">
+      
+      <h1 style="margin: 0 0 15px 0; font-size: 1.8em; color: #4CAF50; font-weight: 300;">
+        Bioelectric Morphic Rap
+      </h1>
+      
+      <p style="margin: 0 0 15px 0; font-size: 1em; color: #FFF; line-height: 1.5;">
+        A generative exploration of bioelectricity and cellular memory, 
+        based on Michael Levin's research.
       </p>
+      
+      <div style="
+        font-size: 0.9em;
+        color: #AAA;
+        line-height: 1.5;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <span style="color: #4CAF50;">SPACEBAR</span> start/stop generation • 
+        <span style="color: #4CAF50;">S</span> record • 
+        hover to interact
+      </div>
     </div>
   `);
+  
+  // Create container for generated text
+  let textContainer = createDiv();
+  textContainer.style('position', 'fixed');
+  textContainer.style('left', '30px');
+  textContainer.style('top', '180px');
+  textContainer.style('z-index', '1002');
+  textContainer.style('width', '400px');
+  textContainer.style('max-height', 'calc(100vh - 200px)');
+  textContainer.style('overflow-y', 'auto');
+  textContainer.style('pointer-events', 'auto');
+  
+  // Assign to global outputContainer
+  outputContainer = textContainer;
+  
+  // Add initial styles to outputContainer
+  outputContainer.style('opacity', '1');
+  outputContainer.style('display', 'block');
+  outputContainer.style('transition', 'opacity 0.5s ease');
 }
 
 function draw() {
@@ -531,6 +675,9 @@ function draw() {
   ambientLight(100);
   pointLight(255, 255, 255, 0, 0, 1000);
   
+  // Draw bioelectric connections between particles
+  drawBioelectricConnections();
+  
   // Update and display pop particles
   for (let i = popParticles.length - 1; i >= 0; i--) {
     popParticles[i].update();
@@ -543,6 +690,28 @@ function draw() {
   for (let particle of particles) {
     particle.update();
     particle.display();
+  }
+  
+  // Draw recording indicator
+  if (isRecording) {
+    push();
+    translate(-width/2 + 30, -height/2 + 30);
+    
+    // Pulsing red circle
+    let pulseSize = 20 + sin(frameCount * 0.1) * 5;
+    fill(255, 0, 0, 200);
+    noStroke();
+    circle(0, 0, pulseSize);
+    
+    // Show recording duration
+    fill(255);
+    noStroke();
+    textAlign(LEFT, CENTER);
+    textSize(14);
+    recordingDuration = (Date.now() - recordingStartTime) / 1000;
+    text(`Recording: ${recordingDuration.toFixed(1)}s`, 30, 0);
+    
+    pop();
   }
 }
 
@@ -560,25 +729,49 @@ function keyPressed() {
         setupAudio();
       }
       
-      // Hide project description
-      document.querySelector('h1').style.display = 'none';
-      document.querySelectorAll('p').forEach(p => p.style.display = 'none');
+      // Hide the header container with transition
+      const header = document.querySelector('div[style*="backdrop-filter"]');
+      header.style.transition = 'opacity 0.5s ease';
+      header.style.opacity = '0';
+      setTimeout(() => {
+        header.style.display = 'none';
+      }, 500);
+      
+      // Show text container
+      outputContainer.style.transition = 'opacity 0.5s ease';
+      outputContainer.style.opacity = '1';
+      outputContainer.style.display = 'block';
       
       // Start continuous generation
-      handleGeneration(); // Generate first one immediately
+      handleGeneration();
       generationInterval = setInterval(() => {
-        if (!isGenerating) {
+        if (!isGenerating && !isSpeaking) {
           handleGeneration();
         }
       }, AUTO_GENERATION_INTERVAL);
       
     } else {
+      // Show the header container
+      const header = document.querySelector('div[style*="backdrop-filter"]');
+      header.style.display = 'block';
+      setTimeout(() => {
+        header.style.opacity = '1';
+      }, 10);
+      
+      // Hide text container
+      outputContainer.style.opacity = '0';
+      setTimeout(() => {
+        outputContainer.style.display = 'none';
+      }, 500);
+      
       // Stop continuous generation
       clearInterval(generationInterval);
-      
-      // Show project description
-      document.querySelector('h1').style.display = 'block';
-      document.querySelectorAll('p').forEach(p => p.style.display = 'block');
+    }
+  } else if (key === 's' || key === 'S') {
+    if (!isRecording) {
+      startRecording();
+    } else {
+      stopRecording();
     }
   }
 }
@@ -760,6 +953,8 @@ function speakText(text) {
       gain.gain.setTargetAtTime(0.1, audioContext.currentTime, 1);
     });
     updateHistoryDisplay();
+    
+    // Handle speech queue
     if (speechQueue.length > 0) {
       speakText(speechQueue.shift());
     }
@@ -770,17 +965,37 @@ function speakText(text) {
 
 function updateHistoryDisplay() {
   let historyHTML = textHistory.map((item, index) => `
-    <div style="background: rgba(255, 255, 255, ${0.95 - index * 0.05}); 
-              padding: 15px;
-              border-radius: 8px; 
-              margin-bottom: 15px;
-              width: 300px;
-              backdrop-filter: blur(5px);
-              box-shadow: 0 2px 10px rgba(0,0,0,${0.2 - index * 0.01});
-              transition: all 0.3s ease-out;
-              ${item.text === currentlySpokenText ? 'border: 2px solid #4CAF50; transform: scale(1.02);' : ''}">
-      <div style="color: #000;">${item.timestamp}</div>
-      <div style="color: #000;">${item.text}</div>
+    <div style="
+      background: rgba(0, 0, 0, 0.5);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      width: 100%;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      transform: translateY(${index * 10}px);
+      transition: all 0.3s ease;
+      ${item.text === currentlySpokenText ? `
+        border: 2px solid #4CAF50;
+        transform: scale(1.02);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        background: rgba(0, 0, 0, 0.6);
+      ` : ''}">
+      <div style="
+        color: rgba(255, 255, 255, 0.7); 
+        font-size: 0.8em; 
+        margin-bottom: 10px;
+        font-family: 'Helvetica', sans-serif;">
+        ${item.timestamp}
+      </div>
+      <div style="
+        color: rgba(255, 255, 255, 1); 
+        font-size: 1em; 
+        line-height: 1.6;
+        font-family: 'Helvetica', sans-serif;">
+        ${item.text}
+      </div>
     </div>
   `).join('');
   
@@ -791,46 +1006,52 @@ function updateHistoryDisplay() {
 function setupAudio() {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   
-  // Add compressor for that techno punch
+  // Add compressor with gentler settings
   compressor = audioContext.createDynamicsCompressor();
-  compressor.threshold.value = -24;
-  compressor.knee.value = 30;
-  compressor.ratio.value = 12;
-  compressor.attack.value = 0.003;
-  compressor.release.value = 0.25;
+  compressor.threshold.value = -18;  // Less compression
+  compressor.knee.value = 20;        // Softer knee
+  compressor.ratio.value = 4;        // Much gentler compression
+  compressor.attack.value = 0.01;    // Slightly slower attack
+  compressor.release.value = 0.3;    // Slightly longer release
   compressor.connect(audioContext.destination);
   
-  // Add delay effect
+  // Adjust main output gain
+  const masterGain = audioContext.createGain();
+  masterGain.gain.value = 0.6;   // Lower overall volume
+  compressor.connect(masterGain);
+  masterGain.connect(audioContext.destination);
+  
+  // Add delay effect with reduced feedback
   delayNode = audioContext.createDelay(1.0);
   const feedback = audioContext.createGain();
-  feedback.gain.value = 0.3;
-  delayNode.delayTime.value = BEAT_INTERVAL / 1000 / 4; // 16th note delay
+  feedback.gain.value = 0.2;     // Reduced feedback
+  delayNode.delayTime.value = BEAT_INTERVAL / 1000 / 3; // Triplet delay
   delayNode.connect(feedback);
   feedback.connect(delayNode);
   delayNode.connect(compressor);
 
-  // Create techno oscillators
+  // Create oscillators with stable settings
   for (let i = 0; i < NUM_OSCILLATORS; i++) {
     const osc = audioContext.createOscillator();
     
-    // Different waveforms for richer texture
-    osc.type = ['sawtooth', 'square', 'triangle'][i % 3];
+    // Simpler waveforms
+    osc.type = ['sine', 'triangle'][i % 2];
     
-    // Techno-oriented frequencies
-    const baseFreq = [146.83, 220, 293.66, 440][i % 4];  // D3, A3, D4, A4
+    // Base frequency that stays constant
+    const baseFreq = BASE_FREQUENCIES[i % 4];
     osc.frequency.value = baseFreq;
     
     const filter = audioContext.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = baseFreq;
-    filter.Q.value = 8;
+    filter.type = 'lowpass';  // Changed to lowpass for smoother sound
+    filter.frequency.value = baseFreq * 2;
+    filter.Q.value = 2;  // Lower resonance
     
     const gain = audioContext.createGain();
-    gain.gain.value = 0.05;  // Lower initial gain
+    gain.gain.value = 0.03;  // Lower initial gain
     
-    // Add stereo panning
+    // Add gentle stereo panning
     const panner = audioContext.createStereoPanner();
-    panner.pan.value = (i % 2 === 0) ? -0.7 : 0.7;
+    panner.pan.value = (i % 2 === 0) ? -0.3 : 0.3;  // Less extreme panning
     
     // Connect through effects chain
     osc.connect(filter);
@@ -847,9 +1068,9 @@ function setupAudio() {
     modulateSound(i);
   }
 
-  // Add rhythmic elements
+  // Add rhythmic elements with gentler settings
   setupRhythm();
-
+  
   // Setup pop synth
   popSynth = audioContext.createOscillator();
   const popGain = audioContext.createGain();
@@ -858,7 +1079,7 @@ function setupAudio() {
   popGain.connect(compressor);
   popSynth.start();
 
-  // Setup hover synth
+  // Setup hover synth with gentler settings
   hoverSynth = audioContext.createOscillator();
   const hoverGain = audioContext.createGain();
   hoverGain.gain.value = 0;
@@ -868,49 +1089,52 @@ function setupAudio() {
   hoverSynth.start();
 }
 
-// Add rhythm section
+// Update setupRhythm function
 function setupRhythm() {
-  // Kick drum
+  // Kick drum with reduced volume
   kickGain = audioContext.createGain();
-  kickGain.gain.value = 0.3;
+  kickGain.gain.value = 0.2;  // Reduced from 0.3
   kickGain.connect(compressor);
   
-  // Hihat
+  // Hihat with reduced volume
   hihatGain = audioContext.createGain();
-  hihatGain.gain.value = 0.1;
+  hihatGain.gain.value = 0.05;  // Reduced from 0.1
   hihatGain.connect(compressor);
   
-  // Start rhythm
-  setInterval(() => playKick(), BEAT_INTERVAL);
-  setInterval(() => playHihat(), BEAT_INTERVAL / 2);
-  
-  // Add beat tracking
+  // Simpler rhythm patterns
   setInterval(() => {
-    lastBeatTime = beatTime;
-    beatTime = audioContext.currentTime;
+    if (Math.random() < 0.4) {  // Reduced probability
+      playKick();
+    }
   }, BEAT_INTERVAL);
+  
+  setInterval(() => {
+    if (Math.random() < 0.3) {  // Reduced probability
+      playHihat();
+    }
+  }, BEAT_INTERVAL / 2);
 }
 
-// Update modulation for more techno feel
+// Update modulateSound function
 function modulateSound(index) {
   const osc = oscillators[index];
   const filter = filterNodes[index];
   const gain = gainNodes[index];
   
-  // Rhythmic filter modulation
+  // Gentler filter modulation
   const filterLFO = audioContext.createOscillator();
-  filterLFO.frequency.value = BPM / 60 / [4, 8, 16][index % 3];  // Sync to rhythm
+  filterLFO.frequency.value = 0.2;  // Much slower modulation
   const filterGain = audioContext.createGain();
-  filterGain.gain.value = 500 + index * 500;
+  filterGain.gain.value = 200 + index * 100;  // Reduced range
   filterLFO.connect(filterGain);
   filterGain.connect(filter.frequency);
   filterLFO.start();
   
-  // Amplitude modulation for movement
+  // Gentler amplitude modulation
   const ampLFO = audioContext.createOscillator();
-  ampLFO.frequency.value = BPM / 60 / [3, 6, 8][index % 3];
+  ampLFO.frequency.value = 0.1;  // Slower modulation
   const ampGain = audioContext.createGain();
-  ampGain.gain.value = 0.1;
+  ampGain.gain.value = 0.05;  // Reduced modulation depth
   ampLFO.connect(ampGain);
   ampGain.connect(gain.gain);
   ampLFO.start();
@@ -963,62 +1187,160 @@ function playHihat() {
 
 // Add pop sound function
 function playPopSound() {
-  const osc = audioContext.createOscillator();
-  const gain = audioContext.createGain();
+  const now = audioContext.currentTime;
   
-  osc.frequency.setValueAtTime(800, audioContext.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+  // Create drum-like oscillator
+  const drumOsc = audioContext.createOscillator();
+  const drumGain = audioContext.createGain();
+  drumOsc.frequency.setValueAtTime(150, now);
+  drumOsc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+  drumGain.gain.setValueAtTime(0.8, now);
+  drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
   
-  gain.gain.setValueAtTime(0.4, audioContext.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+  // Create electric zap sound
+  const zapOsc = audioContext.createOscillator();
+  const zapGain = audioContext.createGain();
+  zapOsc.type = 'square';
+  zapOsc.frequency.setValueAtTime(2000, now);
+  zapOsc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+  zapGain.gain.setValueAtTime(0.2, now);
+  zapGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
   
-  osc.connect(gain);
-  gain.connect(compressor);
+  // Add filter for zap sound
+  const zapFilter = audioContext.createBiquadFilter();
+  zapFilter.type = 'bandpass';
+  zapFilter.frequency.setValueAtTime(3000, now);
+  zapFilter.Q.value = 5;
   
-  osc.start(audioContext.currentTime);
-  osc.stop(audioContext.currentTime + 0.1);
+  // Connect everything
+  drumOsc.connect(drumGain);
+  drumGain.connect(compressor);
+  zapOsc.connect(zapGain);
+  zapGain.connect(zapFilter);
+  zapFilter.connect(compressor);
+  
+  // Start and stop oscillators
+  drumOsc.start(now);
+  zapOsc.start(now);
+  drumOsc.stop(now + 0.2);
+  zapOsc.stop(now + 0.1);
+  
+  // Create more particles
+  for (let i = 0; i < 15; i++) {  // Increased number of particles
+    popParticles.push(new PopParticle(
+      random(-width/3, width/3),
+      random(-height/3, height/3),
+      random(-300, 300)
+    ));
+  }
 }
 
-// Add hover sound function
+// Update hover sound function with techno-style sound
 function playHoverSound() {
+  // Create audio nodes
   const osc = audioContext.createOscillator();
+  const noise = audioContext.createBufferSource();
+  const filter = audioContext.createBiquadFilter();
   const gain = audioContext.createGain();
   
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(440, audioContext.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.1);
+  // Create noise buffer for techno percussion
+  const bufferSize = audioContext.sampleRate * 0.1;
+  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.05));
+  }
+  noise.buffer = buffer;
   
-  gain.gain.setValueAtTime(0.1, audioContext.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+  // Set up filter for techno character
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(1000, audioContext.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+  filter.Q.value = 8;
   
-  osc.connect(gain);
+  // Set up oscillator
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(200, audioContext.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.1);
+  
+  // Set up gain envelope
+  gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15);
+  
+  // Connect nodes
+  osc.connect(filter);
+  noise.connect(filter);
+  filter.connect(gain);
   gain.connect(compressor);
   
+  // Add delay for techno feel
+  const hoverDelay = audioContext.createDelay(0.5);
+  hoverDelay.delayTime.value = BEAT_INTERVAL / 1000 / 8; // Sync with beat
+  const feedbackGain = audioContext.createGain();
+  feedbackGain.gain.value = 0.3;
+  
+  gain.connect(hoverDelay);
+  hoverDelay.connect(feedbackGain);
+  feedbackGain.connect(hoverDelay);
+  hoverDelay.connect(compressor);
+  
+  // Start audio
   osc.start(audioContext.currentTime);
+  noise.start(audioContext.currentTime);
   osc.stop(audioContext.currentTime + 0.2);
+  noise.stop(audioContext.currentTime + 0.2);
+  
+  // Sync with current rhythm complexity
+  filter.frequency.value *= rhythmComplexity;
+  gain.gain.value *= (0.8 + (rhythmComplexity * 0.2));
 }
 
 // Add particle pop effect
 class PopParticle {
   constructor(x, y, z) {
     this.pos = createVector(x, y, z);
-    this.vel = p5.Vector.random3D().mult(random(2, 5));
+    this.vel = p5.Vector.random3D().mult(random(3, 8)); // Faster movement
     this.alpha = 255;
-    this.size = random(10, 20);
+    this.size = random(5, 15);  // Smaller particles
+    this.color = color(
+      random([255, 100, 150]), // Electric blue/white variations
+      random([200, 255, 220]),
+      255,
+      this.alpha
+    );
+    this.rotation = random(TWO_PI);
+    this.rotSpeed = random(-0.2, 0.2);
   }
 
   update() {
     this.pos.add(this.vel);
-    this.alpha -= 10;
-    this.size *= 0.95;
+    this.vel.mult(0.95); // Slow down
+    this.alpha -= 15;  // Faster fade
+    this.size *= 0.92;
+    this.rotation += this.rotSpeed;
   }
 
   display() {
     push();
     translate(this.pos.x, this.pos.y, this.pos.z);
+    rotateX(this.rotation);
+    rotateY(this.rotation);
     noStroke();
-    fill(255, 255, 255, this.alpha);
-    sphere(this.size);
+    fill(this.color);
+    
+    // Draw electric spark
+    beginShape(LINES);
+    for (let i = 0; i < 4; i++) {
+      const angle = (i * TWO_PI) / 4;
+      const x1 = cos(angle) * this.size;
+      const y1 = sin(angle) * this.size;
+      const x2 = -x1;
+      const y2 = -y1;
+      vertex(x1, y1, 0);
+      vertex(x2, y2, 0);
+    }
+    endShape();
+    
     pop();
   }
 
@@ -1029,3 +1351,377 @@ class PopParticle {
 
 // Add to global variables
 let popParticles = [];
+
+// Add progression function
+function updateProgression() {
+  const progressionFactor = particles.length / MAX_PARTICLES;
+  
+  // Update scale based on progression with more dramatic changes
+  currentScale = Math.floor(progressionFactor * SCALES.length);
+  currentScale = Math.min(currentScale, SCALES.length - 1);
+  
+  // Update oscillator frequencies with more variation
+  oscillators.forEach((osc, index) => {
+    const baseFreq = SCALES[currentScale][index % 4];
+    const harmonicOffset = index % 3;  // 0, 1, or 2
+    const progressionMultiplier = 1 + (progressionFactor * 1.5);  // More dramatic frequency change
+    
+    // Create more complex harmonic relationships
+    const newFreq = baseFreq * progressionMultiplier * (1 + (harmonicOffset * 0.25));
+    
+    // Smoother transition to new frequency
+    osc.frequency.exponentialRampToValueAtTime(
+      newFreq,
+      audioContext.currentTime + 0.5
+    );
+    
+    // Update filter characteristics with more dramatic changes
+    const filter = filterNodes[index];
+    filter.Q.value = 4 + (progressionFactor * 8);  // More resonance variation
+    filter.frequency.exponentialRampToValueAtTime(
+      newFreq * (2 + progressionFactor * 4),  // Wider filter sweep
+      audioContext.currentTime + 0.5
+    );
+    
+    // Update gain for dynamic volume changes
+    const gain = gainNodes[index];
+    gain.gain.setTargetAtTime(
+      0.05 * (1 - (progressionFactor * 0.5)),  // Volume decreases as more particles are added
+      audioContext.currentTime,
+      0.1
+    );
+  });
+  
+  // Update rhythm complexity more dramatically
+  rhythmComplexity = 1 + (progressionFactor * (MAX_COMPLEXITY - 1));
+  
+  // More dramatic compressor changes
+  compressor.threshold.value = -30 - (progressionFactor * 20);  // More compression with more particles
+  compressor.ratio.value = 8 + (progressionFactor * 12);  // More compression ratio variation
+  compressor.knee.value = 10 + (progressionFactor * 20);  // Softer knee with more particles
+  
+  // Update delay time with more variation
+  delayNode.delayTime.setValueAtTime(
+    (BEAT_INTERVAL / 1000) * (0.5 - progressionFactor * 0.3),
+    audioContext.currentTime
+  );
+}
+
+// Add recording functions
+function setupRecording() {
+  // Create a stream from the canvas
+  const canvasStream = document.querySelector('canvas').captureStream(30); // 30 FPS
+  
+  // Create audio destination node with better quality settings
+  destinationNode = audioContext.createMediaStreamDestination();
+  
+  // Create a master gain for recording
+  const recordingMasterGain = audioContext.createGain();
+  recordingMasterGain.gain.value = 0.7; // Reduce overall volume to prevent distortion
+  
+  // Connect audio nodes to recording through the master gain
+  compressor.connect(recordingMasterGain);
+  delayNode.connect(recordingMasterGain);
+  
+  // Connect oscillators with individual gains
+  oscillators.forEach((osc, index) => {
+    const recordingGain = audioContext.createGain();
+    recordingGain.gain.value = 0.4; // Lower gain for cleaner mix
+    osc.connect(recordingGain);
+    recordingGain.connect(recordingMasterGain);
+  });
+  
+  // Connect master gain to destination
+  recordingMasterGain.connect(destinationNode);
+  
+  // Combine audio and video streams
+  const audioStream = destinationNode.stream;
+  const tracks = [...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()];
+  recordingStream = new MediaStream(tracks);
+  
+  // Create media recorder with better audio settings
+  mediaRecorder = new MediaRecorder(recordingStream, {
+    mimeType: 'video/webm;codecs=vp9,opus',
+    videoBitsPerSecond: 5000000, // 5 Mbps
+    audioBitsPerSecond: 128000   // 128 kbps audio
+  });
+  
+  // Handle recorded data
+  mediaRecorder.ondataavailable = handleDataAvailable;
+  mediaRecorder.onstop = handleStop;
+}
+
+function startRecording() {
+  if (!mediaRecorder) setupRecording();
+  recordedChunks = [];
+  recordingStartTime = Date.now();
+  mediaRecorder.start();
+  isRecording = true;
+  console.log('Recording started');
+}
+
+function stopRecording() {
+  mediaRecorder.stop();
+  isRecording = false;
+  console.log('Recording stopped');
+}
+
+function handleDataAvailable(event) {
+  if (event.data.size > 0) {
+    recordedChunks.push(event.data);
+  }
+}
+
+async function handleStop() {
+  const duration = (Date.now() - recordingStartTime) / 1000;
+  const timestamp = new Date().toLocaleString().replace(/[/:]/g, '-');
+  const blob = new Blob(recordedChunks, { type: 'video/webm' });
+  const suggestedName = `bioelectric-morphic-rap-${timestamp}-${duration.toFixed(1)}s.webm`;
+  
+  // Create dialog with more information
+  const saveDialog = document.createElement('div');
+  saveDialog.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 25px;
+    border-radius: 12px;
+    color: white;
+    text-align: left;
+    z-index: 1000;
+    min-width: 400px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  `;
+  
+  saveDialog.innerHTML = `
+    <h3 style="margin: 0 0 15px 0; color: #4CAF50;">Recording Complete</h3>
+    <div style="margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+      <p style="margin: 0 0 10px 0; color: #CCC;">
+        <strong>Duration:</strong> ${duration.toFixed(1)} seconds<br>
+        <strong>Format:</strong> WebM (VP9 + Opus)<br>
+        <strong>Quality:</strong> High Definition (5 Mbps)
+      </p>
+    </div>
+    <p style="margin: 0 0 20px 0; font-size: 0.9em; color: #AAA;">
+      Choose where to save:<br>
+      <span style="color: #FFF; word-break: break-all; font-family: monospace;">
+        ${suggestedName}
+      </span>
+    </p>
+    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+      <button onclick="this.parentElement.parentElement.remove();"
+        style="
+          background: transparent;
+          border: 1px solid #666;
+          padding: 8px 15px;
+          color: #CCC;
+          border-radius: 5px;
+          cursor: pointer;
+        "
+      >Cancel</button>
+      <button onclick="saveRecording(this)"
+        style="
+          background: #4CAF50;
+          border: none;
+          padding: 8px 15px;
+          color: white;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: bold;
+        "
+      >Choose Location...</button>
+    </div>
+  `;
+  
+  document.body.appendChild(saveDialog);
+  
+  // Store blob in global scope for saving
+  window.recordingBlob = blob;
+}
+
+// Add new function to save recording
+async function saveRecording(buttonElement) {
+  try {
+    // Show file picker
+    const handle = await window.showSaveFilePicker({
+      suggestedName: `bioelectric-morphic-rap-${new Date().toLocaleString().replace(/[/:]/g, '-')}.webm`,
+      types: [{
+        description: 'WebM Video',
+        accept: {
+          'video/webm': ['.webm'],
+        },
+      }],
+    });
+    
+    // Create writable stream
+    const writable = await handle.createWritable();
+    
+    // Write the blob
+    await writable.write(window.recordingBlob);
+    await writable.close();
+    
+    // Remove dialog
+    buttonElement.parentElement.parentElement.remove();
+    
+    // Clean up
+    delete window.recordingBlob;
+    
+    // Show success message
+    const successMsg = document.createElement('div');
+    successMsg.style.cssText = `
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(76, 175, 80, 0.9);
+      color: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-family: Helvetica, Arial, sans-serif;
+      z-index: 1000;
+    `;
+    successMsg.textContent = 'Recording saved successfully!';
+    document.body.appendChild(successMsg);
+    
+    setTimeout(() => successMsg.remove(), 3000);
+    
+  } catch (err) {
+    console.error('Failed to save file:', err);
+    if (err.name !== 'AbortError') {
+      alert('Failed to save recording. Please try again.');
+    }
+  }
+}
+
+// Add collision sound function
+function playCollisionSound(intensity) {
+  if (!audioContext) return;
+  
+  // Create soft sine oscillator for collision
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  
+  // Use intensity to affect frequency and volume
+  const baseFreq = 200;
+  const volume = Math.min(intensity * 0.1, 0.2); // Cap volume
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(baseFreq, audioContext.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, audioContext.currentTime + 0.1);
+  
+  gain.gain.setValueAtTime(volume, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+  
+  // Add soft filter
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 400;
+  filter.Q.value = 1;
+  
+  // Connect nodes
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(compressor);
+  
+  // Play sound
+  osc.start(audioContext.currentTime);
+  osc.stop(audioContext.currentTime + 0.1);
+}
+
+// Add new function for bioelectric connections
+function drawBioelectricConnections() {
+  // Only draw connections if we have particles
+  if (particles.length < 2) return;
+  
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      let p1 = particles[i];
+      let p2 = particles[j];
+      let d = p5.Vector.dist(p1.pos, p2.pos);
+      
+      // Only draw connections within a certain distance
+      if (d < 400) {
+        // Dynamic color based on time and distance
+        let hue = (frameCount * 0.5 + d * 0.1) % 360;
+        let baseColor = color(`hsb(${hue}, 100%, 100%)`);
+        let alpha = map(d, 0, 400, 255, 50);  // Increased minimum alpha for better visibility
+        let energyIntensity = map(d, 0, 400, 1.5, 0.5);  // Increased minimum intensity
+        
+        // Draw main connection line with fluctuating color
+        push();
+        strokeWeight(3);  // Thicker line for better visibility
+        let lineColor = color(red(baseColor), green(baseColor), blue(baseColor), alpha * 0.7);
+        stroke(lineColor);
+        noFill();
+        
+        // Add glow effect to the line
+        for (let g = 3; g >= 0; g--) {
+          strokeWeight(g * 2 + 1);
+          stroke(red(baseColor), green(baseColor), blue(baseColor), alpha * (0.2 / (g + 1)));
+          beginShape();
+          for (let t = 0; t <= 1; t += 0.1) {
+            // Create curved path between particles
+            let x = lerp(p1.pos.x, p2.pos.x, t);
+            let y = lerp(p1.pos.y, p2.pos.y, t);
+            let z = lerp(p1.pos.z, p2.pos.z, t);
+            
+            // Add sine wave displacement for energy flow effect
+            let time = frameCount * 0.1;
+            let displacement = sin((t * 10 + time)) * 15;  // Increased wave amplitude
+            let perpX = -(p2.pos.y - p1.pos.y);
+            let perpY = (p2.pos.x - p1.pos.x);
+            let perpLen = sqrt(perpX * perpX + perpY * perpY);
+            if (perpLen !== 0) {
+              perpX /= perpLen;
+              perpY /= perpLen;
+            }
+            
+            vertex(
+              x + perpX * displacement,
+              y + perpY * displacement,
+              z
+            );
+          }
+          endShape();
+        }
+        pop();
+        
+        // Draw energy particles with dynamic colors
+        push();
+        let numParticles = floor(map(d, 0, 400, 12, 5));  // More particles
+        for (let k = 0; k < numParticles; k++) {
+          let t = (frameCount * 0.03 + k/numParticles) % 1;
+          let x = lerp(p1.pos.x, p2.pos.x, t);
+          let y = lerp(p1.pos.y, p2.pos.y, t);
+          let z = lerp(p1.pos.z, p2.pos.z, t);
+          
+          // Particle color fluctuation
+          let particleHue = (hue + k * 30) % 360;  // Color variation for each particle
+          let particleColor = color(`hsb(${particleHue}, 100%, 100%)`);
+          
+          // Energy particle effect with enhanced glow
+          push();
+          translate(x, y, z);
+          noStroke();
+          
+          // Core of the particle
+          fill(red(particleColor), green(particleColor), blue(particleColor), alpha);
+          sphere(4 * energyIntensity);
+          
+          // Multi-layered glow effect
+          for (let s = 1; s <= 4; s++) {
+            let glowAlpha = alpha * (1 - s/4) * 0.5;
+            fill(red(particleColor), green(particleColor), blue(particleColor), glowAlpha);
+            sphere(4 * s * energyIntensity);
+          }
+          pop();
+        }
+        pop();
+      }
+    }
+  }
+}
