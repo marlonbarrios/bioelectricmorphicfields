@@ -53,6 +53,13 @@ let lastUsedPrompts = new Set();
 let isSpeaking = false;
 let speechQueue = [];
 let currentlySpokenText = null;
+let audioContext;
+let oscillators = [];
+let gainNodes = [];
+let filterNodes = [];
+const NUM_OSCILLATORS = 6;  // More oscillators for richer sound
+const BPM = 128;  // Standard techno tempo
+const BEAT_INTERVAL = (60 / BPM) * 1000;  // Convert BPM to milliseconds
 
 // Update constants for more dynamic swarm behavior
 const SEPARATION_FORCE = 1.5;    // Stronger separation
@@ -62,6 +69,23 @@ const WANDER_STRENGTH = 0.003;   // Random movement
 const MAX_SPEED = 1.2;           // Faster movement
 const MAX_FORCE = 0.05;          // Stronger steering
 const EDGE_BUFFER = 150;         // Softer boundaries
+
+// Add new audio variables
+let kickGain;
+let hihatGain;
+let delayNode;
+let compressor;
+
+// Add beat tracking to setupRhythm function
+let beatTime = 0;
+let lastBeatTime = 0;
+
+// Add to global variables
+const DANCE_MODES = {
+  PULSE: 0,
+  SPIRAL: 1,
+  WAVE: 2
+};
 
 class Particle {
   constructor(img, text) {
@@ -94,6 +118,18 @@ class Particle {
     this.wanderRadius = 50;
     this.wanderDistance = 100;
     this.phaseOffset = random(TWO_PI);
+    
+    // Add beat-related properties
+    this.beatScale = 1;
+    this.lastBeatScale = 1;
+    this.beatPhase = random(TWO_PI);
+    this.beatOffset = random(0.5); // Random offset for varied movement
+    
+    // Add dance properties
+    this.danceMode = floor(random(3));  // Random dance mode
+    this.dancePhase = random(TWO_PI);
+    this.danceAmplitude = random(0.5, 1.5);
+    this.danceSpeed = random(0.8, 1.2);
   }
 
   separate() {
@@ -165,6 +201,27 @@ class Particle {
 
   update() {
     if (!this.isHovered) {
+      // Get beat progress (remove duplicate)
+      let beatProgress = (audioContext?.currentTime - lastBeatTime) / (BEAT_INTERVAL / 1000);
+      beatProgress = constrain(beatProgress, 0, 1);
+      
+      // Apply dance movement based on mode
+      this.applyDanceMovement(beatProgress);
+      
+      // Create beat pulse
+      this.lastBeatScale = this.beatScale;
+      this.beatScale = 1 + (0.3 * Math.exp(-beatProgress * 8) * sin(this.beatPhase));
+      
+      // Add stronger beat-synchronized movement
+      let beatInfluence = sin(beatProgress * TWO_PI + this.beatPhase) * this.beatOffset * 1.5;
+      
+      // Modify velocity based on beat with stronger effect
+      this.vel.add(
+        cos(this.beatPhase) * beatInfluence * 0.4,
+        sin(this.beatPhase) * beatInfluence * 0.4,
+        sin(beatProgress * PI) * beatInfluence * 0.2
+      );
+      
       // Calculate swarm forces
       let separation = this.separate().mult(SEPARATION_FORCE);
       let cohesion = this.cohesion().mult(COHESION_FORCE);
@@ -248,6 +305,29 @@ class Particle {
     }
     translate(this.pos.x, this.pos.y, zPos);
     
+    // Add dance-specific rotation
+    if (audioContext) {
+      let beatProgress = (audioContext.currentTime - lastBeatTime) / (BEAT_INTERVAL / 1000);
+      let rotationAmount = sin(beatProgress * TWO_PI + this.dancePhase) * 0.1;
+      
+      switch(this.danceMode) {
+        case DANCE_MODES.PULSE:
+          rotateZ(rotationAmount);
+          break;
+        case DANCE_MODES.SPIRAL:
+          rotateY(rotationAmount);
+          rotateZ(frameCount * 0.01 * this.danceSpeed);
+          break;
+        case DANCE_MODES.WAVE:
+          rotateX(rotationAmount * 0.5);
+          rotateY(rotationAmount * 0.5);
+          break;
+      }
+    }
+    
+    // Apply scale with beat influence
+    scale(this.beatScale);
+    
     if (this.img) {
       texture(this.img);
       noStroke();
@@ -306,6 +386,44 @@ class Particle {
       let steer = p5.Vector.sub(desired, this.vel);
       steer.limit(this.maxForce);
       this.acc.add(steer);
+    }
+  }
+
+  applyDanceMovement(beatProgress) {
+    const time = frameCount * 0.02 * this.danceSpeed;
+    const beatIntensity = (1 + sin(beatProgress * TWO_PI)) * 0.5;
+    
+    switch(this.danceMode) {
+      case DANCE_MODES.PULSE:
+        // Stronger pulsing movement
+        let toCenter = createVector(0, 0, 0).sub(this.pos);
+        toCenter.normalize();
+        toCenter.mult(sin(time + this.dancePhase) * beatIntensity * 4);
+        this.acc.add(toCenter);
+        this.beatScale = 1 + sin(beatProgress * TWO_PI) * 0.4 * this.danceAmplitude;
+        break;
+        
+      case DANCE_MODES.SPIRAL:
+        // More pronounced spiral
+        let spiralForce = createVector(
+          -this.pos.y * 0.02,
+          this.pos.x * 0.02,
+          sin(time + this.dancePhase) * 1.0
+        );
+        spiralForce.mult(beatIntensity * this.danceAmplitude * 1.5);
+        this.acc.add(spiralForce);
+        break;
+        
+      case DANCE_MODES.WAVE:
+        // Larger wave movement
+        let waveForce = createVector(
+          sin(time + this.dancePhase) * 4,
+          cos(time * 0.5 + this.dancePhase) * 4,
+          sin(time * 0.7) * 2
+        );
+        waveForce.mult(beatIntensity * this.danceAmplitude * 0.3);
+        this.acc.add(waveForce);
+        break;
     }
   }
 }
@@ -401,6 +519,10 @@ function windowResized() {
 
 function keyPressed() {
   if (key === ' ') {
+    // Initialize audio context on first interaction
+    if (!audioContext) {
+      setupAudio();
+    }
     handleGeneration();
   }
 }
@@ -543,18 +665,42 @@ async function getChatResponse(userInput) {
 
 function speakText(text) {
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.9;
-  utterance.pitch = 1;
   
+  // Optimize voice settings
+  utterance.rate = 0.85;      // Slightly slower
+  utterance.pitch = 1.1;      // Slightly higher pitch
+  utterance.volume = 1;       // Full volume
+  
+  // Get available voices and select a clear one
+  const voices = speechSynthesis.getVoices();
+  const preferredVoice = voices.find(voice => 
+    voice.name.includes('Daniel') || // Good English voice
+    voice.name.includes('Google') || // Google's voices are usually clear
+    voice.name.includes('Premium')   // Premium voices tend to be better
+  );
+  
+  if (preferredVoice) {
+    utterance.voice = preferredVoice;
+  }
+  
+  // Lower background sound when speaking
   utterance.onstart = () => {
     isSpeaking = true;
     currentlySpokenText = text;
+    // Reduce background volume
+    gainNodes.forEach(gain => {
+      gain.gain.setTargetAtTime(0.03, audioContext.currentTime, 0.5);
+    });
     updateHistoryDisplay();
   };
   
   utterance.onend = () => {
     isSpeaking = false;
     currentlySpokenText = null;
+    // Restore background volume
+    gainNodes.forEach(gain => {
+      gain.gain.setTargetAtTime(0.1, audioContext.currentTime, 1);
+    });
     updateHistoryDisplay();
     if (speechQueue.length > 0) {
       speakText(speechQueue.shift());
@@ -581,4 +727,161 @@ function updateHistoryDisplay() {
   `).join('');
   
   outputContainer.html(historyHTML);
+}
+
+// Update setupAudio function
+function setupAudio() {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  
+  // Add compressor for that techno punch
+  compressor = audioContext.createDynamicsCompressor();
+  compressor.threshold.value = -24;
+  compressor.knee.value = 30;
+  compressor.ratio.value = 12;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.25;
+  compressor.connect(audioContext.destination);
+  
+  // Add delay effect
+  delayNode = audioContext.createDelay(1.0);
+  const feedback = audioContext.createGain();
+  feedback.gain.value = 0.3;
+  delayNode.delayTime.value = BEAT_INTERVAL / 1000 / 4; // 16th note delay
+  delayNode.connect(feedback);
+  feedback.connect(delayNode);
+  delayNode.connect(compressor);
+
+  // Create techno oscillators
+  for (let i = 0; i < NUM_OSCILLATORS; i++) {
+    const osc = audioContext.createOscillator();
+    
+    // Different waveforms for richer texture
+    osc.type = ['sawtooth', 'square', 'triangle'][i % 3];
+    
+    // Techno-oriented frequencies
+    const baseFreq = [146.83, 220, 293.66, 440][i % 4];  // D3, A3, D4, A4
+    osc.frequency.value = baseFreq;
+    
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = baseFreq;
+    filter.Q.value = 8;
+    
+    const gain = audioContext.createGain();
+    gain.gain.value = 0.05;  // Lower initial gain
+    
+    // Add stereo panning
+    const panner = audioContext.createStereoPanner();
+    panner.pan.value = (i % 2 === 0) ? -0.7 : 0.7;
+    
+    // Connect through effects chain
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(panner);
+    panner.connect(delayNode);
+    panner.connect(compressor);
+    
+    oscillators.push(osc);
+    gainNodes.push(gain);
+    filterNodes.push(filter);
+    
+    osc.start();
+    modulateSound(i);
+  }
+
+  // Add rhythmic elements
+  setupRhythm();
+}
+
+// Add rhythm section
+function setupRhythm() {
+  // Kick drum
+  kickGain = audioContext.createGain();
+  kickGain.gain.value = 0.3;
+  kickGain.connect(compressor);
+  
+  // Hihat
+  hihatGain = audioContext.createGain();
+  hihatGain.gain.value = 0.1;
+  hihatGain.connect(compressor);
+  
+  // Start rhythm
+  setInterval(() => playKick(), BEAT_INTERVAL);
+  setInterval(() => playHihat(), BEAT_INTERVAL / 2);
+  
+  // Add beat tracking
+  setInterval(() => {
+    lastBeatTime = beatTime;
+    beatTime = audioContext.currentTime;
+  }, BEAT_INTERVAL);
+}
+
+// Update modulation for more techno feel
+function modulateSound(index) {
+  const osc = oscillators[index];
+  const filter = filterNodes[index];
+  const gain = gainNodes[index];
+  
+  // Rhythmic filter modulation
+  const filterLFO = audioContext.createOscillator();
+  filterLFO.frequency.value = BPM / 60 / [4, 8, 16][index % 3];  // Sync to rhythm
+  const filterGain = audioContext.createGain();
+  filterGain.gain.value = 500 + index * 500;
+  filterLFO.connect(filterGain);
+  filterGain.connect(filter.frequency);
+  filterLFO.start();
+  
+  // Amplitude modulation for movement
+  const ampLFO = audioContext.createOscillator();
+  ampLFO.frequency.value = BPM / 60 / [3, 6, 8][index % 3];
+  const ampGain = audioContext.createGain();
+  ampGain.gain.value = 0.1;
+  ampLFO.connect(ampGain);
+  ampGain.connect(gain.gain);
+  ampLFO.start();
+}
+
+// Add percussion functions
+function playKick() {
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  
+  osc.frequency.setValueAtTime(150, audioContext.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+  
+  gain.gain.setValueAtTime(1, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+  
+  osc.connect(gain);
+  gain.connect(kickGain);
+  
+  osc.start(audioContext.currentTime);
+  osc.stop(audioContext.currentTime + 0.5);
+}
+
+function playHihat() {
+  const bufferSize = audioContext.sampleRate * 0.1;
+  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.1));
+  }
+  
+  const noise = audioContext.createBufferSource();
+  noise.buffer = buffer;
+  
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = 7000;
+  
+  const gain = audioContext.createGain();
+  gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+  
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(hihatGain);
+  
+  noise.start();
 }
