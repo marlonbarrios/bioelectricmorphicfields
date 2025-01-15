@@ -87,6 +87,14 @@ const DANCE_MODES = {
   WAVE: 2
 };
 
+let isAutoGenerating = false;
+let generationInterval;
+const AUTO_GENERATION_INTERVAL = 5000; // 5 seconds
+
+// Add to global variables
+let popSynth;
+let hoverSynth;
+
 class Particle {
   constructor(img, text) {
     this.pos = createVector(
@@ -130,6 +138,16 @@ class Particle {
     this.dancePhase = random(TWO_PI);
     this.danceAmplitude = random(0.5, 1.5);
     this.danceSpeed = random(0.8, 1.2);
+    
+    // Add pop effect
+    playPopSound();
+    for (let i = 0; i < 10; i++) {
+      popParticles.push(new PopParticle(
+        random(-width/3, width/3),
+        random(-height/3, height/3),
+        random(-300, 300)
+      ));
+    }
   }
 
   separate() {
@@ -281,6 +299,12 @@ class Particle {
     }
 
     this.edges();
+
+    // Add hover sound
+    if (this.isHovered && !this.lastHoverState) {
+      playHoverSound();
+    }
+    this.lastHoverState = this.isHovered;
   }
 
   edges() {
@@ -481,14 +505,14 @@ function setup() {
                 border-radius: 8px;
                 margin-bottom: 15px;">
       <p style="margin: 0;">
-        Press <span style="color: #4CAF50; font-weight: bold;">SPACEBAR</span> to generate new insights into biological intelligence.
+        Press <span style="color: #4CAF50; font-weight: bold;">SPACEBAR</span> to toggle continuous generation.
         <br><br>
         <span style="font-size: 0.9em; color: #888;">
-          Each floating particle represents patterns of embodied intelligence, from cellular collectives to synthetic living systems.
+          New content will be generated every 5 seconds when active.
           <br>
-          Hover over particles to hear AI-generated insights about how bioelectricity guides growth, healing, and cognitive processes.
+          Press SPACEBAR again to stop generation and show project information.
           <br>
-          Watch as the particles interact, mimicking the information-processing networks that enable biological problem-solving.
+          Each particle represents a unique insight into bioelectric patterns and cellular intelligence.
         </span>
       </p>
     </div>
@@ -507,6 +531,15 @@ function draw() {
   ambientLight(100);
   pointLight(255, 255, 255, 0, 0, 1000);
   
+  // Update and display pop particles
+  for (let i = popParticles.length - 1; i >= 0; i--) {
+    popParticles[i].update();
+    popParticles[i].display();
+    if (popParticles[i].isDead()) {
+      popParticles.splice(i, 1);
+    }
+  }
+  
   for (let particle of particles) {
     particle.update();
     particle.display();
@@ -519,11 +552,34 @@ function windowResized() {
 
 function keyPressed() {
   if (key === ' ') {
-    // Initialize audio context on first interaction
-    if (!audioContext) {
-      setupAudio();
+    isAutoGenerating = !isAutoGenerating;
+    
+    if (isAutoGenerating) {
+      // Initialize audio context on first interaction
+      if (!audioContext) {
+        setupAudio();
+      }
+      
+      // Hide project description
+      document.querySelector('h1').style.display = 'none';
+      document.querySelectorAll('p').forEach(p => p.style.display = 'none');
+      
+      // Start continuous generation
+      handleGeneration(); // Generate first one immediately
+      generationInterval = setInterval(() => {
+        if (!isGenerating) {
+          handleGeneration();
+        }
+      }, AUTO_GENERATION_INTERVAL);
+      
+    } else {
+      // Stop continuous generation
+      clearInterval(generationInterval);
+      
+      // Show project description
+      document.querySelector('h1').style.display = 'block';
+      document.querySelectorAll('p').forEach(p => p.style.display = 'block');
     }
-    handleGeneration();
   }
 }
 
@@ -545,13 +601,13 @@ function getNextPrompt() {
 
 async function handleGeneration() {
   if (isGenerating) return;
-  isGenerating = true;
-
+  
   try {
+    isGenerating = true;
     const currentPrompt = getNextPrompt();
-    const textResponse = await getChatResponse(currentPrompt);
     
-    // Add new text to history
+    // Generate text and start speaking immediately
+    const textResponse = await getChatResponse(currentPrompt);
     textHistory.unshift({
       text: textResponse,
       timestamp: new Date().toLocaleTimeString()
@@ -561,23 +617,25 @@ async function handleGeneration() {
       textHistory.pop();
     }
 
-    // Start speaking immediately
+    // Handle speech
     if (!isSpeaking) {
       speakText(textResponse);
     } else {
       speechQueue.push(textResponse);
     }
 
-    // Update display
     updateHistoryDisplay();
     
-    // Generate image in background
-    const imageResponse = await generateImage(currentPrompt);
-    loadImage(imageResponse, img => {
-      if (particles.length >= MAX_PARTICLES) {
-        particles.pop();
-      }
-      particles.unshift(new Particle(img, textResponse));
+    // Generate image in parallel
+    generateImage(currentPrompt).then(imageResponse => {
+      loadImage(imageResponse, img => {
+        if (particles.length >= MAX_PARTICLES) {
+          particles.pop();
+        }
+        particles.unshift(new Particle(img, textResponse));
+      });
+    }).catch(error => {
+      console.error("Image generation failed:", error);
     });
     
   } catch (error) {
@@ -791,6 +849,23 @@ function setupAudio() {
 
   // Add rhythmic elements
   setupRhythm();
+
+  // Setup pop synth
+  popSynth = audioContext.createOscillator();
+  const popGain = audioContext.createGain();
+  popGain.gain.value = 0;
+  popSynth.connect(popGain);
+  popGain.connect(compressor);
+  popSynth.start();
+
+  // Setup hover synth
+  hoverSynth = audioContext.createOscillator();
+  const hoverGain = audioContext.createGain();
+  hoverGain.gain.value = 0;
+  hoverSynth.type = 'sine';
+  hoverSynth.connect(hoverGain);
+  hoverGain.connect(compressor);
+  hoverSynth.start();
 }
 
 // Add rhythm section
@@ -885,3 +960,72 @@ function playHihat() {
   
   noise.start();
 }
+
+// Add pop sound function
+function playPopSound() {
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  
+  osc.frequency.setValueAtTime(800, audioContext.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+  
+  gain.gain.setValueAtTime(0.4, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+  
+  osc.connect(gain);
+  gain.connect(compressor);
+  
+  osc.start(audioContext.currentTime);
+  osc.stop(audioContext.currentTime + 0.1);
+}
+
+// Add hover sound function
+function playHoverSound() {
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(440, audioContext.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.1);
+  
+  gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+  
+  osc.connect(gain);
+  gain.connect(compressor);
+  
+  osc.start(audioContext.currentTime);
+  osc.stop(audioContext.currentTime + 0.2);
+}
+
+// Add particle pop effect
+class PopParticle {
+  constructor(x, y, z) {
+    this.pos = createVector(x, y, z);
+    this.vel = p5.Vector.random3D().mult(random(2, 5));
+    this.alpha = 255;
+    this.size = random(10, 20);
+  }
+
+  update() {
+    this.pos.add(this.vel);
+    this.alpha -= 10;
+    this.size *= 0.95;
+  }
+
+  display() {
+    push();
+    translate(this.pos.x, this.pos.y, this.pos.z);
+    noStroke();
+    fill(255, 255, 255, this.alpha);
+    sphere(this.size);
+    pop();
+  }
+
+  isDead() {
+    return this.alpha <= 0;
+  }
+}
+
+// Add to global variables
+let popParticles = [];
