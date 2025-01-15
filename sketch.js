@@ -680,7 +680,33 @@ function setup() {
 }
 
 function draw() {
-  background(0);
+  // Create a subtle gradient background that shifts over time
+  let bgTime = frameCount * 0.01;
+  let bgColor1 = color(
+    map(sin(bgTime), -1, 1, 0, 30),        // R: deep blue to purple
+    map(sin(bgTime * 0.7), -1, 1, 0, 10),  // G: very subtle
+    map(sin(bgTime * 0.5), -1, 1, 20, 40)  // B: deep blue range
+  );
+  let bgColor2 = color(
+    map(cos(bgTime * 0.8), -1, 1, 10, 40), // R: deeper purple
+    map(cos(bgTime * 0.6), -1, 1, 0, 15),  // G: very subtle
+    map(cos(bgTime * 0.4), -1, 1, 30, 50)  // B: deep blue range
+  );
+  
+  // Apply gradient background
+  background(bgColor1);
+  push();
+  noStroke();
+  translate(0, 0, -1000);
+  beginShape();
+  fill(bgColor1);
+  vertex(-width, -height);
+  vertex(width, -height);
+  fill(bgColor2);
+  vertex(width, height);
+  vertex(-width, height);
+  endShape(CLOSE);
+  pop();
   
   // Calculate zoom oscillation
   zoomFactor = sin(frameCount * ZOOM_SPEED) * 100;
@@ -688,8 +714,57 @@ function draw() {
   // Apply camera with zoom
   camera(0, 0, 800 + zoomFactor, 0, 0, 0, 0, 1, 0);
   
-  ambientLight(100);
-  pointLight(255, 255, 255, 0, 0, 1000);
+  // Create volumetric fog effect
+  push();
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    let fogTime = frameCount * 0.001 + i;
+    let fogY = sin(fogTime) * 500;
+    let fogAlpha = map(sin(fogTime * 2), -1, 1, 10, 30);
+    fill(100, 150, 255, fogAlpha);
+    translate(0, fogY, -500 + i * 200);
+    plane(width * 2, height * 2);
+  }
+  pop();
+  
+  // Dynamic ambient light that shifts color over time
+  let ambientTime = frameCount * 0.01;
+  let ambientR = map(sin(ambientTime), -1, 1, 20, 50);
+  let ambientG = map(sin(ambientTime * 0.7), -1, 1, 20, 40);
+  let ambientB = map(sin(ambientTime * 0.5), -1, 1, 40, 80);
+  ambientLight(ambientR, ambientG, ambientB);
+  
+  // Multiple moving point lights
+  let time = frameCount * 0.02;
+  
+  // Orbital light 1 (warm purple)
+  let x1 = cos(time) * 800;
+  let z1 = sin(time) * 800;
+  pointLight(255, 150, 255, x1, 0, z1);
+  
+  // Orbital light 2 (cool blue, opposite direction)
+  let x2 = cos(time + PI) * 800;
+  let z2 = sin(time + PI) * 800;
+  pointLight(100, 150, 255, x2, 0, z2);
+  
+  // Pulsing central light (cyan)
+  let centerIntensity = map(sin(time * 1.5), -1, 1, 80, 150);
+  pointLight(150, centerIntensity + 50, centerIntensity + 100, 0, 0, 0);
+  
+  // Vertical moving lights (purple and blue)
+  let y3 = sin(time * 0.5) * 500;
+  pointLight(200, 100, 255, 0, y3, 400);
+  pointLight(100, 150, 255, 0, -y3, -400);
+  
+  // Add subtle directional light for depth
+  directionalLight(
+    30 + sin(time) * 20,
+    20 + sin(time * 0.7) * 15,
+    50 + sin(time * 0.5) * 25,
+    sin(time * 0.5),
+    cos(time * 0.5),
+    -1
+  );
   
   // Draw bioelectric connections between particles
   drawBioelectricConnections();
