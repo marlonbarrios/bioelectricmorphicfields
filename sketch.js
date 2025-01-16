@@ -32,47 +32,7 @@ const system_prompt = `Generate complete, self-contained statements about bioele
 19. The relationship between form, function, and artistic expression in nature
 20. How collective behavior creates complex spatial and temporal compositions
 
-Each statement must be a complete thought that ends with a period. Include concepts about collective intelligence, bioelectric signaling, morphogenetic fields, and developmental decision-making. Frame biological processes in terms of information processing, problem-solving strategies, and their inherent artistic and musical qualities.
-
-Consider these additional artistic dimensions:
-
-1. How biological systems create emergent compositions
-2. The relationship between cellular patterns and artistic forms
-3. Natural principles of aesthetic organization
-4. The musical nature of bioelectric communication
-5. Choreographic patterns in cellular behavior
-6. The emergence of visual harmony in living systems
-7. Biological principles of composition and form
-8. Memory as an architect of biological form
-9. Natural algorithms for pattern creation
-10. The aesthetics of collective cellular behavior
-11. How memories become embodied in physical structures
-12. The sculptural nature of biological memory
-13. Pattern formation as memory materialization
-14. The relationship between time, memory, and form
-15. How collective memory shapes biological architecture
-
-+ Consider these digital art and gestalt principles:
-+ 
-+ 1. How biological patterns mirror generative art algorithms
-+ 2. The relationship between cellular organization and gestalt principles
-+ 3. Emergence of form through collective digital behaviors
-+ 4. Self-organizing principles in both biology and digital art
-+ 5. Pattern recognition and formation in living and digital systems
-+ 6. The role of proximity, similarity, and continuity in biological organization
-+ 7. How digital generative systems reflect biological growth patterns
-+ 8. The relationship between code, memory, and biological form
-+ 9. Computational aesthetics in natural and artificial systems
-+ 10. The convergence of digital and biological pattern languages
-+ 11. How gestalt principles guide both perception and growth
-+ 12. The role of iteration and recursion in natural forms
-+ 13. Digital morphogenesis and biological development
-+ 14. The aesthetics of emergent computational behavior
-+ 15. How code can simulate and extend biological principles
-
-Frame responses to emphasize the artistic and compositional aspects of biological processes, 
-exploring how nature creates beauty through pattern, rhythm, form, and the embodiment of memory,
-and how these principles manifest in both biological and digital generative systems.`;
+Each statement must be a complete thought that ends with a period. Include concepts about collective intelligence, bioelectric signaling, morphogenetic fields, and developmental decision-making. Frame biological processes in terms of information processing, problem-solving strategies, and their inherent artistic and musical qualities.`;
 
 // Array of different prompts to cycle through
 const prompts = [
@@ -103,6 +63,27 @@ const prompts = [
     "Organic visual rhythms",
     "Memory-form relationships"
 ];
+
+// Add to global variables
+const DANCE_MODES = {
+  PULSE: 0,
+  SPIRAL: 1,
+  WAVE: 2
+};
+
+// Add to global variables
+const SHAPE_TYPES = {
+  SPHERE: 'sphere',
+  PLANE: 'plane',
+  CONE: 'cone',
+  BOX: 'box',
+  TORUS: 'torus',
+  CYLINDER: 'cylinder',
+  PYRAMID: 'pyramid',
+  OCTAHEDRON: 'octahedron',
+  CILIUM: 'cilium',
+  FLAGELLUM: 'flagellum'
+};
 
 // Global variables
 let outputContainer;
@@ -140,13 +121,6 @@ let compressor;
 // Add beat tracking to setupRhythm function
 let beatTime = 0;
 let lastBeatTime = 0;
-
-// Add to global variables
-const DANCE_MODES = {
-  PULSE: 0,
-  SPIRAL: 1,
-  WAVE: 2
-};
 
 let isAutoGenerating = false;
 let generationInterval;
@@ -187,19 +161,8 @@ let lastStreamTime = 0;
 const STREAM_SPEED = 30; // Characters per second
 const STREAM_INTERVAL = 1000 / STREAM_SPEED; // Milliseconds between each character
 
-// Add to global variables at the top
-const SHAPE_TYPES = {
-  SPHERE: 'sphere',
-  PLANE: 'plane',
-  CONE: 'cone',
-  BOX: 'box',
-  TORUS: 'torus',
-  CYLINDER: 'cylinder',
-  PYRAMID: 'pyramid',
-  OCTAHEDRON: 'octahedron',
-  CILIUM: 'cilium',
-  FLAGELLUM: 'flagellum'
-};
+// Add to global variables
+let popParticles = [];
 
 class Particle {
   constructor(img, text) {
@@ -263,7 +226,7 @@ class Particle {
       SHAPE_TYPES.BOX,
       SHAPE_TYPES.TORUS,
       SHAPE_TYPES.CYLINDER,
-      SHAPE_TYPES.OCTAHEDRON,
+    
       SHAPE_TYPES.CILIUM,
       SHAPE_TYPES.FLAGELLUM
     ]);
@@ -590,9 +553,12 @@ class Particle {
 
   drawCilium() {
     // Draw a cilium with undulating movement
-    noStroke();
     let segmentLength = this.size / this.segmentCount;
     let time = frameCount * this.waveFrequency;
+    
+    // Create bright, clear colors for cilia
+    let baseColor = color(50, 220, 255);  // Bright cyan base
+    let glowColor = color(150, 240, 255); // Lighter cyan for glow
     
     for (let i = 0; i < this.segmentCount; i++) {
       let t = i / this.segmentCount;
@@ -601,28 +567,57 @@ class Particle {
       push();
       translate(waveOffset, -i * segmentLength, 0);
       let segmentSize = map(t, 0, 1, segmentLength/2, segmentLength/4);
-      sphere(segmentSize);
+      
+      // Draw glowing segments
+      noStroke();
+      // Inner core (brighter)
+      fill(red(baseColor), green(baseColor), blue(baseColor), 255);
+      sphere(segmentSize * 0.6);
+      
+      // Outer glow layers
+      for (let g = 0; g < 3; g++) {
+        fill(red(glowColor), green(glowColor), blue(glowColor), 100 - g * 30);
+        sphere(segmentSize * (1 + g * 0.2));
+      }
       pop();
     }
   }
 
   drawFlagellum() {
     // Draw a flagellum with sinusoidal movement
-    noStroke();
     let segmentLength = this.size / this.segmentCount;
     let time = frameCount * this.waveFrequency;
     
-    beginShape(TRIANGLE_STRIP);
-    for (let i = 0; i <= this.segmentCount; i++) {
-      let t = i / this.segmentCount;
-      let waveOffset = sin(time + this.wavePhase + t * TWO_PI * 2) * this.waveAmplitude * t;
-      let thickness = map(t, 0, 1, segmentLength/2, segmentLength/8);
+    // Create bright, clear colors for flagella
+    let baseColor = color(255, 100, 200);  // Bright pink base
+    let glowColor = color(255, 150, 220); // Lighter pink for glow
+    
+    // Draw main flagellum body with glow effect
+    for (let g = 2; g >= 0; g--) {
+      beginShape(TRIANGLE_STRIP);
       
-      // Create vertices for both sides of the flagellum
-      vertex(waveOffset - thickness, -i * segmentLength, 0);
-      vertex(waveOffset + thickness, -i * segmentLength, 0);
+      // Set color based on glow layer
+      let alpha = map(g, 0, 2, 255, 100);
+      if (g === 0) {
+        fill(red(baseColor), green(baseColor), blue(baseColor), alpha);
+      } else {
+        fill(red(glowColor), green(glowColor), blue(glowColor), alpha);
+      }
+      noStroke();
+      
+      for (let i = 0; i <= this.segmentCount; i++) {
+        let t = i / this.segmentCount;
+        let waveOffset = sin(time + this.wavePhase + t * TWO_PI * 2) * this.waveAmplitude * t;
+        let thickness = map(t, 0, 1, segmentLength/2, segmentLength/8);
+        // Scale thickness based on glow layer
+        let layerThickness = thickness * (1 + g * 0.3);
+        
+        // Create vertices for both sides of the flagellum
+        vertex(waveOffset - layerThickness, -i * segmentLength, 0);
+        vertex(waveOffset + layerThickness, -i * segmentLength, 0);
+      }
+      endShape();
     }
-    endShape();
   }
 
   getWanderForce() {
@@ -1108,12 +1103,12 @@ async function generateImage(prompt) {
   const data = {
     modelURL: "https://api.replicate.com/v1/models/stability-ai/stable-diffusion-3/predictions",
     input: {
-      prompt: "scientific visualization, cellular networks, " + prompt,
+      prompt: "scientific visualization, cellular networks, bioluminescent organisms, electric plasma, fire-like energy flows, lightning arcs, glowing neural pathways, " + prompt,
       width: 512,
       height: 512,
       num_outputs: 1,
       guidance_scale: 7.5,
-      negative_prompt: "cartoon, illustration, abstract art, white background"
+      negative_prompt: "cartoon, illustration, abstract art, white background, dull colors, flat lighting, monochrome"
     },
   };
 
@@ -1632,9 +1627,6 @@ class PopParticle {
     return this.alpha <= 0;
   }
 }
-
-// Add to global variables
-let popParticles = [];
 
 // Add progression function
 function updateProgression() {
