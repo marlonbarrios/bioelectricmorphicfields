@@ -187,6 +187,20 @@ let lastStreamTime = 0;
 const STREAM_SPEED = 30; // Characters per second
 const STREAM_INTERVAL = 1000 / STREAM_SPEED; // Milliseconds between each character
 
+// Add to global variables at the top
+const SHAPE_TYPES = {
+  SPHERE: 'sphere',
+  PLANE: 'plane',
+  CONE: 'cone',
+  BOX: 'box',
+  TORUS: 'torus',
+  CYLINDER: 'cylinder',
+  PYRAMID: 'pyramid',
+  OCTAHEDRON: 'octahedron',
+  CILIUM: 'cilium',
+  FLAGELLUM: 'flagellum'
+};
+
 class Particle {
   constructor(img, text) {
     this.pos = createVector(
@@ -209,9 +223,9 @@ class Particle {
     // Update movement parameters
     this.maxSpeed = MAX_SPEED;
     this.maxForce = MAX_FORCE;
-    this.separationDist = 300;    // Closer separation distance
-    this.cohesionDist = 500;      // Larger cohesion range
-    this.alignmentDist = 400;     // Moderate alignment range
+    this.separationDist = 300;
+    this.cohesionDist = 500;
+    this.alignmentDist = 400;
     
     // Add parameters for organic movement
     this.wanderTheta = random(TWO_PI);
@@ -223,26 +237,36 @@ class Particle {
     this.beatScale = 1;
     this.lastBeatScale = 1;
     this.beatPhase = random(TWO_PI);
-    this.beatOffset = random(0.5); // Random offset for varied movement
+    this.beatOffset = random(0.5);
     
     // Add dance properties
-    this.danceMode = floor(random(3));  // Random dance mode
+    this.danceMode = floor(random(3));
     this.dancePhase = random(TWO_PI);
     this.danceAmplitude = random(0.5, 1.5);
     this.danceSpeed = random(0.8, 1.2);
     
-    // Add pop effect
-    playPopSound();
-    for (let i = 0; i < 10; i++) {
-      popParticles.push(new PopParticle(
-        random(-width/3, width/3),
-        random(-height/3, height/3),
-        random(-300, 300)
-      ));
-    }
+    // Add collision properties
+    this.radius = this.originalSize / 2;
+    this.lastCollisionTime = 0;
     
-    this.radius = this.originalSize / 2;  // Add radius for collision detection
-    this.lastCollisionTime = 0;  // Track last collision to prevent too frequent sounds
+    // Add cilia/flagella specific properties
+    this.wavePhase = random(TWO_PI);
+    this.waveFrequency = random(0.05, 0.1);
+    this.waveAmplitude = random(20, 40);
+    this.segmentCount = floor(random(8, 15));
+    
+    // Update shape type selection to include new shapes
+    this.shapeType = random([
+      SHAPE_TYPES.SPHERE,
+      SHAPE_TYPES.PLANE,
+      SHAPE_TYPES.CONE,
+      SHAPE_TYPES.BOX,
+      SHAPE_TYPES.TORUS,
+      SHAPE_TYPES.CYLINDER,
+      SHAPE_TYPES.OCTAHEDRON,
+      SHAPE_TYPES.CILIUM,
+      SHAPE_TYPES.FLAGELLUM
+    ]);
   }
 
   separate() {
@@ -314,7 +338,26 @@ class Particle {
 
   update() {
     if (!this.isHovered) {
-      // Get beat progress (remove duplicate)
+      // Add specialized movement for cilia and flagella
+      if (this.shapeType === SHAPE_TYPES.CILIUM || this.shapeType === SHAPE_TYPES.FLAGELLUM) {
+        // Add undulating movement
+        let time = frameCount * 0.02;
+        let waveForce = createVector(
+          sin(time) * 0.2,
+          cos(time) * 0.1,
+          sin(time * 0.7) * 0.15
+        );
+        this.acc.add(waveForce);
+        
+        // Add slight upward bias
+        this.acc.add(createVector(0, -0.01, 0));
+        
+        // Add rotational movement
+        let rotationSpeed = this.shapeType === SHAPE_TYPES.FLAGELLUM ? 0.05 : 0.02;
+        this.vel.rotate(rotationSpeed * sin(time));
+      }
+      
+      // Rest of update logic
       let beatProgress = (audioContext?.currentTime - lastBeatTime) / (BEAT_INTERVAL / 1000);
       beatProgress = constrain(beatProgress, 0, 1);
       
@@ -429,35 +472,157 @@ class Particle {
     }
     translate(this.pos.x, this.pos.y, zPos);
     
-    // Add dance-specific rotation
-    if (audioContext) {
-      let beatProgress = (audioContext.currentTime - lastBeatTime) / (BEAT_INTERVAL / 1000);
-      let rotationAmount = sin(beatProgress * TWO_PI + this.dancePhase) * 0.1;
+    if (this.img) {
+      noStroke();
+      ambientLight(60);
+      pointLight(255, 255, 255, 0, 0, 500);
+      texture(this.img);
+      rotateY(frameCount * 0.01);
       
-      switch(this.danceMode) {
-        case DANCE_MODES.PULSE:
-          rotateZ(rotationAmount);
+      switch(this.shapeType) {
+        case SHAPE_TYPES.SPHERE:
+          sphere(this.size / 2);
           break;
-        case DANCE_MODES.SPIRAL:
-          rotateY(rotationAmount);
-          rotateZ(frameCount * 0.01 * this.danceSpeed);
+          
+        case SHAPE_TYPES.PLANE:
+          plane(this.size, this.size);
           break;
-        case DANCE_MODES.WAVE:
-          rotateX(rotationAmount * 0.5);
-          rotateY(rotationAmount * 0.5);
+          
+        case SHAPE_TYPES.CONE:
+          cone(this.size / 2, this.size);
+          break;
+          
+        case SHAPE_TYPES.BOX:
+          box(this.size * 0.8);
+          break;
+          
+        case SHAPE_TYPES.TORUS:
+          torus(this.size / 3, this.size / 8);
+          break;
+          
+        case SHAPE_TYPES.CYLINDER:
+          cylinder(this.size / 3, this.size);
+          break;
+          
+        case SHAPE_TYPES.PYRAMID:
+          push();
+          scale(this.size / 200);
+          beginShape(TRIANGLES);
+          // Base
+          vertex(-50, 50, -50);
+          vertex(50, 50, -50);
+          vertex(50, 50, 50);
+          vertex(50, 50, 50);
+          vertex(-50, 50, 50);
+          vertex(-50, 50, -50);
+          // Sides
+          vertex(0, -50, 0);
+          vertex(-50, 50, -50);
+          vertex(50, 50, -50);
+          
+          vertex(0, -50, 0);
+          vertex(50, 50, -50);
+          vertex(50, 50, 50);
+          
+          vertex(0, -50, 0);
+          vertex(50, 50, 50);
+          vertex(-50, 50, 50);
+          
+          vertex(0, -50, 0);
+          vertex(-50, 50, 50);
+          vertex(-50, 50, -50);
+          endShape();
+          pop();
+          break;
+          
+        case SHAPE_TYPES.OCTAHEDRON:
+          push();
+          scale(this.size / 200);
+          beginShape(TRIANGLES);
+          // Top half
+          vertex(0, -50, 0);
+          vertex(-50, 0, -50);
+          vertex(50, 0, -50);
+          
+          vertex(0, -50, 0);
+          vertex(50, 0, -50);
+          vertex(50, 0, 50);
+          
+          vertex(0, -50, 0);
+          vertex(50, 0, 50);
+          vertex(-50, 0, 50);
+          
+          vertex(0, -50, 0);
+          vertex(-50, 0, 50);
+          vertex(-50, 0, -50);
+          
+          // Bottom half
+          vertex(0, 50, 0);
+          vertex(-50, 0, -50);
+          vertex(50, 0, -50);
+          
+          vertex(0, 50, 0);
+          vertex(50, 0, -50);
+          vertex(50, 0, 50);
+          
+          vertex(0, 50, 0);
+          vertex(50, 0, 50);
+          vertex(-50, 0, 50);
+          
+          vertex(0, 50, 0);
+          vertex(-50, 0, 50);
+          vertex(-50, 0, -50);
+          endShape();
+          pop();
+          break;
+          
+        case SHAPE_TYPES.CILIUM:
+          this.drawCilium();
+          break;
+          
+        case SHAPE_TYPES.FLAGELLUM:
+          this.drawFlagellum();
           break;
       }
     }
-    
-    // Apply scale with beat influence
-    scale(this.beatScale);
-    
-    if (this.img) {
-      texture(this.img);
-      noStroke();
-      plane(this.size, this.size);
-    }
     pop();
+  }
+
+  drawCilium() {
+    // Draw a cilium with undulating movement
+    noStroke();
+    let segmentLength = this.size / this.segmentCount;
+    let time = frameCount * this.waveFrequency;
+    
+    for (let i = 0; i < this.segmentCount; i++) {
+      let t = i / this.segmentCount;
+      let waveOffset = sin(time + this.wavePhase + t * TWO_PI) * this.waveAmplitude * t;
+      
+      push();
+      translate(waveOffset, -i * segmentLength, 0);
+      let segmentSize = map(t, 0, 1, segmentLength/2, segmentLength/4);
+      sphere(segmentSize);
+      pop();
+    }
+  }
+
+  drawFlagellum() {
+    // Draw a flagellum with sinusoidal movement
+    noStroke();
+    let segmentLength = this.size / this.segmentCount;
+    let time = frameCount * this.waveFrequency;
+    
+    beginShape(TRIANGLE_STRIP);
+    for (let i = 0; i <= this.segmentCount; i++) {
+      let t = i / this.segmentCount;
+      let waveOffset = sin(time + this.wavePhase + t * TWO_PI * 2) * this.waveAmplitude * t;
+      let thickness = map(t, 0, 1, segmentLength/2, segmentLength/8);
+      
+      // Create vertices for both sides of the flagellum
+      vertex(waveOffset - thickness, -i * segmentLength, 0);
+      vertex(waveOffset + thickness, -i * segmentLength, 0);
+    }
+    endShape();
   }
 
   getWanderForce() {
@@ -864,6 +1029,8 @@ function keyPressed() {
     } else {
       stopRecording();
     }
+  } else if (key === 'w' || key === 'W') {
+    showWireframe = !showWireframe;
   }
 }
 
