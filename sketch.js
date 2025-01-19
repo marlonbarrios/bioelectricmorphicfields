@@ -5,8 +5,12 @@ const MAX_HISTORY = 15;
 const GENERATION_INTERVAL = 10000;
 const synth = window.speechSynthesis;
 const CENTER_PULL = 0.02;  // Force pulling particles to center
-const ZOOM_SPEED = 0.005;  // Speed of zoom pulse
-let zoomFactor = 0;        // Current zoom state
+const ZOOM_SPEED = 0.003;  // Slower base speed for smoother movement
+const ZOOM_RANGE = 400;    // Base zoom range
+const ZOOM_OFFSET = 800;   // Base camera distance
+let zoomFactor = 0;
+let secondaryZoom = 0;
+let breathingZoom = 0;
 
 // System prompts
 const system_prompt = `Generate complete, self-contained statements about bioelectricity, cellular development, and biological regeneration, drawing from Michael Levin's research on embodied intelligence. Focus on:
@@ -73,16 +77,7 @@ const DANCE_MODES = {
 
 // Add to global variables
 const SHAPE_TYPES = {
-  SPHERE: 'sphere',
-  PLANE: 'plane',
-  CONE: 'cone',
-  BOX: 'box',
-  TORUS: 'torus',
-  CYLINDER: 'cylinder',
-  PYRAMID: 'pyramid',
-  OCTAHEDRON: 'octahedron',
-  CILIUM: 'cilium',
-  FLAGELLUM: 'flagellum'
+  PLANE: 'plane'
 };
 
 // Global variables
@@ -202,48 +197,97 @@ class Particle {
     this.beatPhase = random(TWO_PI);
     this.beatOffset = random(0.5);
     
-    // Add dance properties
+    // Add dance properties with more dramatic values
     this.danceMode = floor(random(3));
     this.dancePhase = random(TWO_PI);
-    this.danceAmplitude = random(0.5, 1.5);
-    this.danceSpeed = random(0.8, 1.2);
+    this.danceAmplitude = random(1.0, 2.0);  // Increased amplitude range
+    this.danceSpeed = random(1.2, 1.8);      // Increased speed range
     
-    // Add collision properties
-    this.radius = this.originalSize / 2;
-    this.lastCollisionTime = 0;
+    // Add rotation properties
+    this.rotX = random(TWO_PI);
+    this.rotY = random(TWO_PI);
+    this.rotZ = random(TWO_PI);
+    this.rotSpeedX = random(-0.05, 0.05);  // Increased rotation speed range
+    this.rotSpeedY = random(-0.05, 0.05);  // Increased rotation speed range
+    this.rotSpeedZ = random(-0.05, 0.05);  // Increased rotation speed range
     
-    // Add cilia/flagella specific properties
-    this.wavePhase = random(TWO_PI);
-    this.waveFrequency = random(0.05, 0.1);
-    this.waveAmplitude = random(20, 40);
-    this.segmentCount = floor(random(8, 15));
+    // Shape type is always PLANE
+    this.shapeType = SHAPE_TYPES.PLANE;
+  }
+
+  update() {
+    if (!this.isHovered) {
+      let time = frameCount * 0.02;
+      let waveForce = createVector(
+        sin(time) * 0.2,
+        cos(time) * 0.1,
+        sin(time * 0.7) * 0.15
+      );
+      this.acc.add(waveForce);
+      
+      // Add slight upward bias
+      this.acc.add(createVector(0, -0.01, 0));
+      
+      // Calculate beat progress safely
+      let beatProgress = 0;
+      if (audioContext) {
+        beatProgress = (audioContext.currentTime - lastBeatTime) / (BEAT_INTERVAL / 1000);
+        beatProgress = constrain(beatProgress, 0, 1);
+      }
+      
+      // Update beat scale
+      this.lastBeatScale = this.beatScale;
+      this.beatScale = 1 + (0.3 * Math.exp(-beatProgress * 8) * sin(this.beatPhase));
+      
+      // Add beat-synchronized movement
+      let beatInfluence = sin(beatProgress * TWO_PI + this.beatPhase) * this.beatOffset * 1.5;
+      this.vel.add(createVector(
+        cos(this.beatPhase) * beatInfluence * 0.4,
+        sin(this.beatPhase) * beatInfluence * 0.4,
+        sin(beatProgress * PI) * beatInfluence * 0.2
+      ));
+      
+      // Calculate forces
+      let separation = this.separate();
+      let alignment = this.align();
+      let cohesion = this.cohesion();
+      let wander = this.getWanderForce();
+      
+      // Apply forces with safety checks
+      if (separation) this.acc.add(separation.mult(SEPARATION_FORCE));
+      if (alignment) this.acc.add(alignment.mult(ALIGNMENT_FORCE));
+      if (cohesion) this.acc.add(cohesion.mult(COHESION_FORCE));
+      if (wander) this.acc.add(wander.mult(WANDER_STRENGTH));
+      
+      // Update velocity and position
+      this.vel.add(this.acc);
+      this.vel.limit(this.maxSpeed);
+      this.pos.add(this.vel);
+      
+      // Reset acceleration
+      this.acc.mult(0);
+    }
     
-    // Update shape type selection to include new shapes
-    this.shapeType = random([
-      SHAPE_TYPES.SPHERE,
-      SHAPE_TYPES.PLANE,
-      SHAPE_TYPES.CONE,
-      SHAPE_TYPES.BOX,
-      SHAPE_TYPES.TORUS,
-      SHAPE_TYPES.CYLINDER,
-    
-      SHAPE_TYPES.CILIUM,
-      SHAPE_TYPES.FLAGELLUM
-    ]);
+    // Constrain to bounds
+    this.pos.x = constrain(this.pos.x, -width/3, width/3);
+    this.pos.y = constrain(this.pos.y, -height/3, height/3);
+    this.pos.z = constrain(this.pos.z, -300, 300);
   }
 
   separate() {
-    let steering = createVector();
+    let steering = createVector(0, 0, 0);
     let count = 0;
     
     for (let other of particles) {
-      let d = p5.Vector.dist(this.pos, other.pos);
-      if (d > 0 && d < this.separationDist) {
-        let diff = p5.Vector.sub(this.pos, other.pos);
-        diff.normalize();
-        diff.div(d);
-        steering.add(diff);
-        count++;
+      if (other !== this) {
+        let d = p5.Vector.dist(this.pos, other.pos);
+        if (d > 0 && d < this.separationDist) {
+          let diff = p5.Vector.sub(this.pos, other.pos);
+          diff.normalize();
+          diff.div(d);
+          steering.add(diff);
+          count++;
+        }
       }
     }
     
@@ -253,18 +297,21 @@ class Particle {
       steering.sub(this.vel);
       steering.limit(this.maxForce);
     }
+    
     return steering;
   }
 
   align() {
-    let steering = createVector();
+    let steering = createVector(0, 0, 0);
     let count = 0;
     
     for (let other of particles) {
-      let d = p5.Vector.dist(this.pos, other.pos);
-      if (d > 0 && d < this.alignmentDist) {
-        steering.add(other.vel);
-        count++;
+      if (other !== this) {
+        let d = p5.Vector.dist(this.pos, other.pos);
+        if (d > 0 && d < this.alignmentDist) {
+          steering.add(other.vel);
+          count++;
+        }
       }
     }
     
@@ -274,18 +321,21 @@ class Particle {
       steering.sub(this.vel);
       steering.limit(this.maxForce);
     }
+    
     return steering;
   }
 
   cohesion() {
-    let steering = createVector();
+    let steering = createVector(0, 0, 0);
     let count = 0;
     
     for (let other of particles) {
-      let d = p5.Vector.dist(this.pos, other.pos);
-      if (d > 0 && d < this.cohesionDist) {
-        steering.add(other.pos);
-        count++;
+      if (other !== this) {
+        let d = p5.Vector.dist(this.pos, other.pos);
+        if (d > 0 && d < this.cohesionDist) {
+          steering.add(other.pos);
+          count++;
+        }
       }
     }
     
@@ -296,135 +346,29 @@ class Particle {
       steering.sub(this.vel);
       steering.limit(this.maxForce);
     }
+    
     return steering;
   }
 
-  update() {
-    if (!this.isHovered) {
-      // Add specialized movement for cilia and flagella
-      if (this.shapeType === SHAPE_TYPES.CILIUM || this.shapeType === SHAPE_TYPES.FLAGELLUM) {
-        // Add undulating movement
-        let time = frameCount * 0.02;
-        let waveForce = createVector(
-          sin(time) * 0.2,
-          cos(time) * 0.1,
-          sin(time * 0.7) * 0.15
-        );
-        this.acc.add(waveForce);
-        
-        // Add slight upward bias
-        this.acc.add(createVector(0, -0.01, 0));
-        
-        // Add rotational movement
-        let rotationSpeed = this.shapeType === SHAPE_TYPES.FLAGELLUM ? 0.05 : 0.02;
-        this.vel.rotate(rotationSpeed * sin(time));
-      }
-      
-      // Rest of update logic
-      let beatProgress = (audioContext?.currentTime - lastBeatTime) / (BEAT_INTERVAL / 1000);
-      beatProgress = constrain(beatProgress, 0, 1);
-      
-      // Apply dance movement based on mode
-      this.applyDanceMovement(beatProgress);
-      
-      // Create beat pulse
-      this.lastBeatScale = this.beatScale;
-      this.beatScale = 1 + (0.3 * Math.exp(-beatProgress * 8) * sin(this.beatPhase));
-      
-      // Add stronger beat-synchronized movement
-      let beatInfluence = sin(beatProgress * TWO_PI + this.beatPhase) * this.beatOffset * 1.5;
-      
-      // Modify velocity based on beat with stronger effect
-      this.vel.add(
-        cos(this.beatPhase) * beatInfluence * 0.4,
-        sin(this.beatPhase) * beatInfluence * 0.4,
-        sin(beatProgress * PI) * beatInfluence * 0.2
-      );
-      
-      // Calculate swarm forces
-      let separation = this.separate().mult(SEPARATION_FORCE);
-      let cohesion = this.cohesion().mult(COHESION_FORCE);
-      let alignment = this.align().mult(ALIGNMENT_FORCE);
-      
-      // Add wandering behavior
-      let wander = this.getWanderForce().mult(WANDER_STRENGTH);
-      
-      // Add forces
-      this.acc.add(separation);
-      this.acc.add(cohesion);
-      this.acc.add(alignment);
-      this.acc.add(wander);
-      
-      // Add sinusoidal vertical motion
-      let time = frameCount * 0.02;
-      this.acc.add(0, sin(time + this.phaseOffset) * 0.001, cos(time + this.phaseOffset) * 0.001);
-      
-      // Update velocity with improved damping
-      this.vel.add(this.acc);
-      this.vel.limit(this.maxSpeed * (0.8 + sin(time) * 0.2)); // Variable speed
-      
-      // Add slight spiral motion
-      let toCenter = createVector(-this.pos.x, -this.pos.y, -this.pos.z);
-      toCenter.normalize();
-      let spiral = createVector(
-        -this.pos.y * 0.001,
-        this.pos.x * 0.001,
-        sin(time + this.phaseOffset) * 0.001
-      );
-      this.vel.add(spiral);
-      
-      // Update position
-      this.pos.add(this.vel);
-      
-      // Soft boundary handling
-      this.handleBounds();
-      
-      // Reset acceleration
-      this.acc.mult(0);
-      
-      // Add collision check
-      if (particles.length > 1) {
-        this.checkCollisions(particles);
-      }
-    }
+  getWanderForce() {
+    this.wanderTheta += random(-0.3, 0.3);
+    let wanderPoint = this.vel.copy();
+    wanderPoint.normalize();
+    wanderPoint.mult(this.wanderDistance);
+    wanderPoint.add(this.pos);
     
-    // Constrain to smaller space
-    this.pos.x = constrain(this.pos.x, -width/3, width/3);
-    this.pos.y = constrain(this.pos.y, -height/3, height/3);
-    this.pos.z = constrain(this.pos.z, -200, 200);
+    let theta = this.wanderTheta + this.vel.heading();
+    let x = this.wanderRadius * cos(theta);
+    let y = this.wanderRadius * sin(theta);
+    wanderPoint.add(createVector(x, y, 0));
     
-    let screenPos = this.getScreenPosition();
-    let d = dist(mouseX - width/2, mouseY - height/2, screenPos.x, screenPos.y);
-    this.isHovered = d < this.size/2;
+    let steer = p5.Vector.sub(wanderPoint, this.pos);
+    steer.normalize();
+    steer.mult(this.maxSpeed);
+    steer.sub(this.vel);
+    steer.limit(this.maxForce);
     
-    this.targetSize = this.isHovered ? this.originalSize * this.hoverScale : this.originalSize;
-    this.size = lerp(this.size, this.targetSize, 0.1);
-    
-    if (this.isHovered) {
-      this.vel.mult(0.8);
-    }
-
-    this.edges();
-
-    // Add hover sound
-    if (this.isHovered && !this.lastHoverState) {
-      playHoverSound();
-    }
-    this.lastHoverState = this.isHovered;
-  }
-
-  edges() {
-    let buffer = 100;
-    if (this.pos.x < -width/2 - buffer) this.pos.x = width/2 + buffer;
-    if (this.pos.x > width/2 + buffer) this.pos.x = -width/2 - buffer;
-    if (this.pos.y < -height/2 - buffer) this.pos.y = height/2 + buffer;
-    if (this.pos.y > height/2 + buffer) this.pos.y = -height/2 - buffer;
-    if (this.pos.z < -800) this.pos.z = 800;
-    if (this.pos.z > 800) this.pos.z = -800;
-  }
-
-  getScreenPosition() {
-    return createVector(this.pos.x, this.pos.y, this.pos.z);
+    return steer;
   }
 
   display() {
@@ -440,330 +384,93 @@ class Particle {
       ambientLight(60);
       pointLight(255, 255, 255, 0, 0, 500);
       texture(this.img);
-      rotateY(frameCount * 0.01);
       
-      switch(this.shapeType) {
-        case SHAPE_TYPES.SPHERE:
-          sphere(this.size / 2);
-          break;
+      // Add beat-influenced rotation
+      let beatInfluence = sin(frameCount * 0.1) * 0.2;
+      
+      // Apply dynamic rotations with beat influence
+      rotateX(this.rotX + beatInfluence);
+      rotateY(this.rotY + beatInfluence);
+      rotateZ(this.rotZ + beatInfluence);
+      
+      // Update rotations with varying speeds
+      this.rotX += this.rotSpeedX * (1 + sin(frameCount * 0.05) * 0.5);
+      this.rotY += this.rotSpeedY * (1 + cos(frameCount * 0.05) * 0.5);
+      this.rotZ += this.rotSpeedZ * (1 + sin(frameCount * 0.08) * 0.5);
+      
+      // Add more dramatic beat-based scaling
+      let beatScale = 1 + sin(frameCount * 0.1 + this.beatPhase) * 0.3;
+      scale(beatScale);
+      
+      // Draw plane with enhanced glow effect
+      for(let i = 4; i >= 0; i--) {
+        push();
+        let glowAlpha = map(i, 0, 4, 255, 30);
+        tint(255, glowAlpha);
+        scale(1 + i * 0.15);
+        plane(this.size, this.size);
+        pop();
+      }
+      
+      // Draw elastic lines between corners
+      let halfSize = this.size / 2;
+      let corners = [
+        createVector(-halfSize, -halfSize, 0),
+        createVector(halfSize, -halfSize, 0),
+        createVector(halfSize, halfSize, 0),
+        createVector(-halfSize, halfSize, 0)
+      ];
+      
+      // Add dynamic displacement to corners
+      let time = frameCount * 0.05;
+      for (let corner of corners) {
+        let displacement = 15 * sin(time + corner.x + corner.y);
+        corner.add(
+          sin(time + corner.y) * 5,
+          cos(time + corner.x) * 5,
+          displacement
+        );
+      }
+      
+      // Draw elastic lines with glow effect
+      for (let i = 0; i < corners.length; i++) {
+        let start = corners[i];
+        let end = corners[(i + 1) % corners.length];
+        
+        // Draw multiple lines for glow effect
+        for (let g = 3; g >= 0; g--) {
+          stroke(100, 200, 255, map(g, 0, 3, 200, 50));
+          strokeWeight(g * 1.5 + 1);
+          noFill();
           
-        case SHAPE_TYPES.PLANE:
-          plane(this.size, this.size);
-          break;
-          
-        case SHAPE_TYPES.CONE:
-          cone(this.size / 2, this.size);
-          break;
-          
-        case SHAPE_TYPES.BOX:
-          box(this.size * 0.8);
-          break;
-          
-        case SHAPE_TYPES.TORUS:
-          torus(this.size / 3, this.size / 8);
-          break;
-          
-        case SHAPE_TYPES.CYLINDER:
-          cylinder(this.size / 3, this.size);
-          break;
-          
-        case SHAPE_TYPES.PYRAMID:
-          push();
-          scale(this.size / 200);
-          beginShape(TRIANGLES);
-          // Base
-          vertex(-50, 50, -50);
-          vertex(50, 50, -50);
-          vertex(50, 50, 50);
-          vertex(50, 50, 50);
-          vertex(-50, 50, 50);
-          vertex(-50, 50, -50);
-          // Sides
-          vertex(0, -50, 0);
-          vertex(-50, 50, -50);
-          vertex(50, 50, -50);
-          
-          vertex(0, -50, 0);
-          vertex(50, 50, -50);
-          vertex(50, 50, 50);
-          
-          vertex(0, -50, 0);
-          vertex(50, 50, 50);
-          vertex(-50, 50, 50);
-          
-          vertex(0, -50, 0);
-          vertex(-50, 50, 50);
-          vertex(-50, 50, -50);
+          // Draw curved line
+          beginShape();
+          for (let t = 0; t <= 1; t += 0.1) {
+            let x = lerp(start.x, end.x, t);
+            let y = lerp(start.y, end.y, t);
+            let z = lerp(start.z, end.z, t);
+            
+            // Add sine wave displacement for elastic effect
+            let wave = sin(t * PI + time) * 10;
+            vertex(
+              x + sin(time + y) * wave,
+              y + cos(time + x) * wave,
+              z + sin(time + x + y) * wave
+            );
+          }
           endShape();
-          pop();
-          break;
-          
-        case SHAPE_TYPES.OCTAHEDRON:
-          push();
-          scale(this.size / 200);
-          beginShape(TRIANGLES);
-          // Top half
-          vertex(0, -50, 0);
-          vertex(-50, 0, -50);
-          vertex(50, 0, -50);
-          
-          vertex(0, -50, 0);
-          vertex(50, 0, -50);
-          vertex(50, 0, 50);
-          
-          vertex(0, -50, 0);
-          vertex(50, 0, 50);
-          vertex(-50, 0, 50);
-          
-          vertex(0, -50, 0);
-          vertex(-50, 0, 50);
-          vertex(-50, 0, -50);
-          
-          // Bottom half
-          vertex(0, 50, 0);
-          vertex(-50, 0, -50);
-          vertex(50, 0, -50);
-          
-          vertex(0, 50, 0);
-          vertex(50, 0, -50);
-          vertex(50, 0, 50);
-          
-          vertex(0, 50, 0);
-          vertex(50, 0, 50);
-          vertex(-50, 0, 50);
-          
-          vertex(0, 50, 0);
-          vertex(-50, 0, 50);
-          vertex(-50, 0, -50);
-          endShape();
-          pop();
-          break;
-          
-        case SHAPE_TYPES.CILIUM:
-          this.drawCilium();
-          break;
-          
-        case SHAPE_TYPES.FLAGELLUM:
-          this.drawFlagellum();
-          break;
+        }
+        
+        // Add pulsing connection points
+        push();
+        translate(start.x, start.y, start.z);
+        noStroke();
+        fill(150, 220, 255, 200);
+        sphere(3 + sin(time * 2) * 1);
+        pop();
       }
     }
     pop();
-  }
-
-  drawCilium() {
-    // Draw a cilium with undulating movement
-    let segmentLength = this.size / this.segmentCount;
-    let time = frameCount * this.waveFrequency;
-    
-    // Create bright, clear colors for cilia
-    let baseColor = color(50, 220, 255);  // Bright cyan base
-    let glowColor = color(150, 240, 255); // Lighter cyan for glow
-    
-    for (let i = 0; i < this.segmentCount; i++) {
-      let t = i / this.segmentCount;
-      let waveOffset = sin(time + this.wavePhase + t * TWO_PI) * this.waveAmplitude * t;
-      
-      push();
-      translate(waveOffset, -i * segmentLength, 0);
-      let segmentSize = map(t, 0, 1, segmentLength/2, segmentLength/4);
-      
-      // Draw glowing segments
-      noStroke();
-      // Inner core (brighter)
-      fill(red(baseColor), green(baseColor), blue(baseColor), 255);
-      sphere(segmentSize * 0.6);
-      
-      // Outer glow layers
-      for (let g = 0; g < 3; g++) {
-        fill(red(glowColor), green(glowColor), blue(glowColor), 100 - g * 30);
-        sphere(segmentSize * (1 + g * 0.2));
-      }
-      pop();
-    }
-  }
-
-  drawFlagellum() {
-    // Draw a flagellum with sinusoidal movement
-    let segmentLength = this.size / this.segmentCount;
-    let time = frameCount * this.waveFrequency;
-    
-    // Create bright, clear colors for flagella
-    let baseColor = color(255, 100, 200);  // Bright pink base
-    let glowColor = color(255, 150, 220); // Lighter pink for glow
-    
-    // Draw main flagellum body with glow effect
-    for (let g = 2; g >= 0; g--) {
-      beginShape(TRIANGLE_STRIP);
-      
-      // Set color based on glow layer
-      let alpha = map(g, 0, 2, 255, 100);
-      if (g === 0) {
-        fill(red(baseColor), green(baseColor), blue(baseColor), alpha);
-      } else {
-        fill(red(glowColor), green(glowColor), blue(glowColor), alpha);
-      }
-      noStroke();
-      
-      for (let i = 0; i <= this.segmentCount; i++) {
-        let t = i / this.segmentCount;
-        let waveOffset = sin(time + this.wavePhase + t * TWO_PI * 2) * this.waveAmplitude * t;
-        let thickness = map(t, 0, 1, segmentLength/2, segmentLength/8);
-        // Scale thickness based on glow layer
-        let layerThickness = thickness * (1 + g * 0.3);
-        
-        // Create vertices for both sides of the flagellum
-        vertex(waveOffset - layerThickness, -i * segmentLength, 0);
-        vertex(waveOffset + layerThickness, -i * segmentLength, 0);
-      }
-      endShape();
-    }
-  }
-
-  getWanderForce() {
-    // Calculate wander point
-    this.wanderTheta += random(-0.3, 0.3);
-    let wanderPoint = this.vel.copy();
-    wanderPoint.normalize();
-    wanderPoint.mult(this.wanderDistance);
-    wanderPoint.add(this.pos);
-    
-    let theta = this.wanderTheta + this.vel.heading();
-    let x = this.wanderRadius * cos(theta);
-    let y = this.wanderRadius * sin(theta);
-    wanderPoint.add(x, y, 0);
-    
-    let steer = p5.Vector.sub(wanderPoint, this.pos);
-    steer.normalize();
-    steer.mult(this.maxSpeed);
-    steer.sub(this.vel);
-    steer.limit(this.maxForce);
-    return steer;
-  }
-
-  handleBounds() {
-    let buffer = EDGE_BUFFER;
-    let bounds = createVector(width/2, height/2, 300);
-    let desired = null;
-    
-    if (this.pos.x < -bounds.x + buffer) {
-      desired = createVector(this.maxSpeed, this.vel.y, this.vel.z);
-    } else if (this.pos.x > bounds.x - buffer) {
-      desired = createVector(-this.maxSpeed, this.vel.y, this.vel.z);
-    }
-    
-    if (this.pos.y < -bounds.y + buffer) {
-      desired = createVector(this.vel.x, this.maxSpeed, this.vel.z);
-    } else if (this.pos.y > bounds.y - buffer) {
-      desired = createVector(this.vel.x, -this.maxSpeed, this.vel.z);
-    }
-    
-    if (this.pos.z < -bounds.z + buffer) {
-      desired = createVector(this.vel.x, this.vel.y, this.maxSpeed);
-    } else if (this.pos.z > bounds.z - buffer) {
-      desired = createVector(this.vel.x, this.vel.y, -this.maxSpeed);
-    }
-    
-    if (desired !== null) {
-      desired.normalize();
-      desired.mult(this.maxSpeed);
-      let steer = p5.Vector.sub(desired, this.vel);
-      steer.limit(this.maxForce);
-      this.acc.add(steer);
-    }
-  }
-
-  applyDanceMovement(beatProgress) {
-    const time = frameCount * 0.02 * this.danceSpeed;
-    const beatIntensity = (1 + sin(beatProgress * TWO_PI)) * 0.5;
-    // Scale movement intensity with rhythm complexity
-    const complexityFactor = rhythmComplexity / MAX_COMPLEXITY;
-    
-    switch(this.danceMode) {
-      case DANCE_MODES.PULSE:
-        // Stronger pulsing movement that scales with complexity
-        let toCenter = createVector(0, 0, 0).sub(this.pos);
-        toCenter.normalize();
-        toCenter.mult(sin(time + this.dancePhase) * beatIntensity * 4 * complexityFactor);
-        this.acc.add(toCenter);
-        this.beatScale = 1 + sin(beatProgress * TWO_PI) * 0.4 * this.danceAmplitude * complexityFactor;
-        break;
-        
-      case DANCE_MODES.SPIRAL:
-        // More pronounced spiral that intensifies with complexity
-        let spiralForce = createVector(
-          -this.pos.y * 0.02 * complexityFactor,
-          this.pos.x * 0.02 * complexityFactor,
-          sin(time + this.dancePhase) * complexityFactor
-        );
-        spiralForce.mult(beatIntensity * this.danceAmplitude * 1.5);
-        this.acc.add(spiralForce);
-        break;
-        
-      case DANCE_MODES.WAVE:
-        // Larger wave movement that grows with complexity
-        let waveForce = createVector(
-          sin(time + this.dancePhase) * 4 * complexityFactor,
-          cos(time * 0.5 + this.dancePhase) * 4 * complexityFactor,
-          sin(time * 0.7) * 2 * complexityFactor
-        );
-        waveForce.mult(beatIntensity * this.danceAmplitude * 0.3);
-        this.acc.add(waveForce);
-        break;
-    }
-    
-    // Add extra movement based on rhythm complexity
-    if (complexityFactor > 0.5) {
-      let chaosForce = p5.Vector.random3D();
-      chaosForce.mult(0.1 * (complexityFactor - 0.5) * beatIntensity);
-      this.acc.add(chaosForce);
-    }
-  }
-
-  checkCollisions(others) {
-    const now = audioContext?.currentTime || 0;
-    const minTimeBetweenCollisions = 0.1; // Minimum time between collision sounds
-
-    for (let other of others) {
-      if (other === this) continue;
-      
-      let d = p5.Vector.dist(this.pos, other.pos);
-      let minDist = this.radius + other.radius;
-      
-      if (d < minDist && now - this.lastCollisionTime > minTimeBetweenCollisions) {
-        // Calculate collision velocity for sound intensity
-        let relativeVel = p5.Vector.sub(this.vel, other.vel).mag();
-        
-        // Play collision sound with intensity based on relative velocity
-        playCollisionSound(relativeVel);
-        
-        // Update last collision time
-        this.lastCollisionTime = now;
-        
-        // Calculate collision response
-        let normal = p5.Vector.sub(this.pos, other.pos).normalize();
-        let relativeVelocity = p5.Vector.sub(this.vel, other.vel);
-        let velocityAlongNormal = p5.Vector.dot(relativeVelocity, normal);
-        
-        // Only bounce if objects are moving towards each other
-        if (velocityAlongNormal > 0) return;
-        
-        // Bounce with some energy loss
-        let restitution = 0.8; // Bounciness factor (0.8 = 80% energy preserved)
-        let j = -(1 + restitution) * velocityAlongNormal;
-        
-        // Apply equal and opposite forces
-        let impulse = p5.Vector.mult(normal, j);
-        this.vel.add(p5.Vector.mult(impulse, 0.5));
-        other.vel.sub(p5.Vector.mult(impulse, 0.5));
-        
-        // Ensure minimum separation to prevent sticking
-        let overlap = minDist - d;
-        let separation = p5.Vector.mult(normal, overlap * 0.5);
-        this.pos.add(separation);
-        other.pos.sub(separation);
-      }
-    }
   }
 }
 
@@ -868,11 +575,23 @@ function draw() {
   endShape(CLOSE);
   pop();
   
-  // Calculate zoom oscillation
-  zoomFactor = sin(frameCount * ZOOM_SPEED) * 100;
-  
-  // Apply camera with zoom
-  camera(0, 0, 800 + zoomFactor, 0, 0, 0, 0, 1, 0);
+  // Calculate multi-layered zoom
+  let zoomTime = frameCount * ZOOM_SPEED;
+  zoomFactor = sin(zoomTime) * ZOOM_RANGE;  // Primary slow zoom
+  secondaryZoom = sin(zoomTime * 2.5) * 100;  // Faster secondary movement
+  breathingZoom = sin(zoomTime * 0.5) * 50;  // Very slow breathing motion
+
+  // Combine zoom factors with beat influence
+  let beatZoom = 0;
+  if (audioContext) {
+    let beatProgress = (audioContext.currentTime - lastBeatTime) / (BEAT_INTERVAL / 1000);
+    beatProgress = constrain(beatProgress, 0, 1);
+    beatZoom = sin(beatProgress * TWO_PI) * 150;  // Add beat-synchronized zoom
+  }
+
+  // Apply camera with combined zoom effects
+  let totalZoom = ZOOM_OFFSET + zoomFactor + secondaryZoom + breathingZoom + beatZoom;
+  camera(0, 0, totalZoom, 0, 0, 0, 0, 1, 0);
   
   // Create volumetric fog effect
   push();
@@ -1045,6 +764,77 @@ function getNextPrompt() {
   return selectedPrompt;
 }
 
+// Add new function for image appearance sound
+function playImageAppearSound() {
+  if (!audioContext) return;
+  
+  const now = audioContext.currentTime;
+  
+  // Create deep mysterious base sound
+  const baseOsc = audioContext.createOscillator();
+  const baseGain = audioContext.createGain();
+  baseOsc.type = 'sine';
+  baseOsc.frequency.setValueAtTime(80, now);  // Much lower base frequency
+  baseOsc.frequency.exponentialRampToValueAtTime(120, now + 1.5);  // Slower rise
+  baseGain.gain.setValueAtTime(0.4, now);
+  baseGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);  // Longer fade
+  
+  // Create ethereal sweep
+  const sweepOsc = audioContext.createOscillator();
+  const sweepGain = audioContext.createGain();
+  sweepOsc.type = 'sine';
+  sweepOsc.frequency.setValueAtTime(150, now);  // Lower sweep start
+  sweepOsc.frequency.exponentialRampToValueAtTime(300, now + 1.8);  // Slower sweep
+  sweepGain.gain.setValueAtTime(0.2, now);
+  sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+  
+  // Add mysterious overtones
+  const mystOsc = audioContext.createOscillator();
+  const mystGain = audioContext.createGain();
+  mystOsc.type = 'triangle';  // Softer waveform
+  mystOsc.frequency.setValueAtTime(200, now);
+  mystOsc.frequency.exponentialRampToValueAtTime(100, now + 1.5);  // Downward sweep
+  mystGain.gain.setValueAtTime(0.15, now);
+  mystGain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+  
+  // Add filter for mysterious quality
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'lowpass';  // Changed to lowpass for darker sound
+  filter.frequency.setValueAtTime(500, now);
+  filter.frequency.exponentialRampToValueAtTime(200, now + 1.5);
+  filter.Q.value = 3;
+  
+  // Add longer reverb-like delay
+  const delay = audioContext.createDelay(2.0);
+  const feedback = audioContext.createGain();
+  delay.delayTime.value = 0.4;  // Longer delay time
+  feedback.gain.value = 0.4;  // More feedback for mysterious echo
+  
+  // Connect everything
+  baseOsc.connect(baseGain);
+  sweepOsc.connect(sweepGain);
+  mystOsc.connect(mystGain);
+  
+  baseGain.connect(filter);
+  sweepGain.connect(filter);
+  mystGain.connect(filter);
+  
+  filter.connect(delay);
+  filter.connect(compressor);
+  delay.connect(feedback);
+  feedback.connect(delay);
+  delay.connect(compressor);
+  
+  // Start oscillators with longer duration
+  baseOsc.start(now);
+  sweepOsc.start(now);
+  mystOsc.start(now);
+  baseOsc.stop(now + 2.0);
+  sweepOsc.stop(now + 2.0);
+  mystOsc.stop(now + 1.8);
+}
+
+// Modify handleGeneration to play sound when image appears
 async function handleGeneration() {
   if (isGenerating) return;
   
@@ -1089,6 +879,7 @@ async function handleGeneration() {
           particles.shift();
         }
         particles.push(new Particle(img, textResponse));
+        playImageAppearSound(); // Play sound when new image appears
       });
     }
     
@@ -1129,9 +920,9 @@ async function getChatResponse(userInput) {
   const data = {
     modelURL: "https://api.replicate.com/v1/models/meta/meta-llama-3-70b-instruct/predictions",
     input: {
-      prompt: userInput + ". Express as a complete statement that ends with a period.",
+      prompt: userInput + ". Express as a single, direct statement about bioelectricity or cellular behavior that ends with a period. Keep it under 20 words.",
       system_prompt: system_prompt,
-      max_tokens: 60,
+      max_tokens: 30,  // Reduced from 60 to enforce brevity
       temperature: 0.7,
       top_p: 0.9,
     },
@@ -1151,25 +942,20 @@ async function getChatResponse(userInput) {
   
   // Ensure text ends with a period
   if (!text.endsWith('.')) {
-    // Find the last complete sentence if there is one
+    text += '.';
+  }
+  
+  // If text is too long, truncate to the last complete sentence
+  if (text.length > 100) {
     const lastPeriodIndex = text.lastIndexOf('.');
-    if (lastPeriodIndex > 0) {
+    if (lastPeriodIndex > 20) {
       text = text.substring(0, lastPeriodIndex + 1);
-    } else {
-      // If no period found, add one
-      text += '.';
     }
   }
   
-  // Remove any incomplete sentences at the start
-  const firstPeriodIndex = text.indexOf('.');
-  if (firstPeriodIndex > 0 && firstPeriodIndex < text.length - 1) {
-    text = text.substring(firstPeriodIndex + 1).trim();
-  }
-  
   // Ensure we have a complete statement
-  if (text.length < 20) { // If too short, likely incomplete
-    text = "Biological systems process information through distributed networks."; // fallback
+  if (text.length < 10) { // If too short
+    text = "Bioelectric fields guide cellular memory and pattern formation."; // fallback
   }
   
   return text;
@@ -1913,6 +1699,88 @@ function drawBioelectricConnections() {
   // Only draw connections if we have particles
   if (particles.length < 2) return;
   
+  // Calculate corners for all particles first
+  let allCorners = [];
+  for (let particle of particles) {
+    let halfSize = particle.size / 2;
+    let corners = [
+      createVector(-halfSize, -halfSize, 0),
+      createVector(halfSize, -halfSize, 0),
+      createVector(halfSize, halfSize, 0),
+      createVector(-halfSize, halfSize, 0)
+    ];
+    
+    // Transform corners based on particle's rotation and position
+    let time = frameCount * 0.05;
+    for (let corner of corners) {
+      // Add dynamic displacement
+      let displacement = 15 * sin(time + corner.x + corner.y);
+      corner.add(
+        sin(time + corner.y) * 5,
+        cos(time + corner.x) * 5,
+        displacement
+      );
+      
+      // Apply particle's rotation
+      let rotatedCorner = createVector(
+        corner.x * cos(particle.rotZ) - corner.y * sin(particle.rotZ),
+        corner.x * sin(particle.rotZ) + corner.y * cos(particle.rotZ),
+        corner.z
+      );
+      
+      // Add particle's position
+      rotatedCorner.add(particle.pos);
+      allCorners.push(rotatedCorner);
+    }
+  }
+  
+  // Draw elastic connections between corners of different images
+  for (let i = 0; i < allCorners.length; i++) {
+    for (let j = i + 1; j < allCorners.length; j++) {
+      let start = allCorners[i];
+      let end = allCorners[j];
+      let d = p5.Vector.dist(start, end);
+      
+      // Only connect corners within a certain distance
+      if (d < 300) {
+        let time = frameCount * 0.05;
+        
+        // Draw elastic line with glow effect
+        for (let g = 2; g >= 0; g--) {
+          stroke(100, 200, 255, map(g, 0, 2, 150, 30));
+          strokeWeight(g * 1.5 + 1);
+          noFill();
+          
+          // Draw curved line
+          beginShape();
+          for (let t = 0; t <= 1; t += 0.1) {
+            let x = lerp(start.x, end.x, t);
+            let y = lerp(start.y, end.y, t);
+            let z = lerp(start.z, end.z, t);
+            
+            // Add sine wave displacement for elastic effect
+            let wave = sin(t * PI + time) * 8;
+            vertex(
+              x + sin(time + y) * wave,
+              y + cos(time + x) * wave,
+              z + sin(time + x + y) * wave
+            );
+          }
+          endShape();
+        }
+        
+        // Add small connection points
+        push();
+        translate(start.x, start.y, start.z);
+        noStroke();
+        fill(150, 220, 255, 150);
+        sphere(2 + sin(time * 2) * 0.5);
+        pop();
+      }
+    }
+  }
+  
+  // Continue with original bioelectric connections
   for (let i = 0; i < particles.length; i++) {
     for (let j = i + 1; j < particles.length; j++) {
       let p1 = particles[i];
